@@ -1,0 +1,129 @@
+\documentclass{article}
+
+\usepackage{biblatex}
+\addbibresource{text-based-worlds.bib}
+
+\title{Knowledge and Inference in Text-Based Worlds\\
+\Large{CSCI 740 Final Project Proposal}}
+\author{Morgan Wajda-Levie}
+\begin{document}
+
+\maketitle
+
+\section{Description}
+
+Text adventure games are a computationally simple form of computer game
+that describe a game world to the player using natural language text,
+and receive input from the player in the form of (simple) natural
+language input. These games are superficially simple --- playable in a
+terminal, the adventure games written today are run visually
+indistinguishable from classic games like Zork from the 1980s --- but
+relate complex game-worlds requiring creative and varied problem solving
+from the player.
+
+Text adventure games pose an interesting challenge for artificial
+intelligence, because they provide a generalized framework for allowing
+agents to engage with abstract problems without the need for learning
+complex physical processes. As Cote et al note, ``Through text, an agent
+could learn and use the concept that \emph{opening doors provides access
+to connected rooms} without going through the (literal) motions of
+turning knobs in 3D space and time''\cite{cote_textworld_2019}.
+
+Text adventure games can be formalized as partially observable Markov
+decision processes. The states contain the location of the player and
+other game objects inside of discrete \emph{rooms}, the actions take the
+form of text commands issued to the parser, the observations provided
+both as textual descriptions following player actions, and the reward
+function taking the form of both explicit mechanical rewards (many games
+contain a scoring mechanism that rewards players for completing
+subquests) as well as textual feedback as to the effect or ineffect of
+various actions. As such, Reinforcement Learning is a natural fit for
+approaching these games\cite{cote_textworld_2019}.
+
+Popular text adventure remain largely unsolvable by learning AIs without
+heavy-handed techniques such as extracting the parser vocabulary
+directly from the game's source code\cite{cote_textworld_2019}. While
+progress in these games remains a popular benchmark for AI agents, I
+will focus on solving constrained games written using the
+\texttt{TextWorld} tool, introduced by Cote et al in their paper
+``TextWorld: A Learning Environment for Text-based Games.'' This tool
+provides a python framework for connecting AI agents to conventional
+text-based games, published using the Z-Machine format first pioneered
+by Infocom in the 1980s. It also provides tools for procedurally
+generating text-based games around user-defined puzzles, and with a
+variety of options for constraining the problem
+space\cite{cote_textworld_2019}.
+
+I would like to explore ways in which an agent can infer state and
+action knowledge from textual percepts, and apply that knowledge to
+solving increasingly complex maze-like puzzles, with the goal of
+effectively generalizing a solution to novel arrangements of obstacles,
+clues and \emph{red herrings} (hints or possible puzzles which do not
+ultimately lead towards a goal state.)
+
+\section{CSCI 740 Related Topics}
+
+The predominant approach to solving text adventure games is
+\textbf{Reinforcement Learning}. In order to meaningfully interpret the
+agent's percepts, I will need to make use of \textbf{Natural Language
+Processing}. Many of the most successful agents make use of
+\textbf{Knowledge Graphs} to represent belief about the game
+state\cite{dambekodi_playing_2020}.
+
+\section{Inputs and Materials}
+
+In addition to the \texttt{TextWorld} framework, I will be using a
+pre-trained NLP model to make inferences from textual percepts. I will
+start with GloVe for this, but may experiment with other language models
+such as BERT. While my focus will be on solving problems that I have
+created, I also have access to a wide array of hand-authored text
+adventure games through the Interactive Fiction Archive (ifarchive.org).
+
+\section{Evaluation}
+
+My primary evaluation will be running the agent on successively
+difficult procedurally generated puzzles and tracking both its
+success/failure rate and partial completion score. Puzzles will start as
+trivial mazes (rooms with clearly described exits in traditional
+directions), then introduce increasingly complex obstacles, such as
+doors, locked doors, and obstructions which need to be cleared, climbed or
+otherwise overcome. Similarly, I will increase the linguistic
+complexity, starting with minimalist descriptions describing only
+meaningful game objects and constraining the vocabulary to observed
+words, advancing towards more complex descriptions and more oblique
+hints within game text. Finally, I may experiment with puzzles that
+upend conventional expectations, such as non-deterministic movement,
+non-mirrored directions (moving east from A to B, but moving north to
+return from B to A) and dynamic environments that change outside of
+player actions.
+
+\section{Timeline}
+
+\begin{tabular}{p{1in}|p{\dimexpr\linewidth-1in-4\tabcolsep}}
+    \hline
+    \textbf{Week Ending} & \textbf{Task} \\
+    \hline
+    April 28 & Implement simple RL agent. Generate and solve baseline
+    maze. Write performance measuring tool.\\
+    May 5 & Create benchmark puzzles, with 4 levels of difficulty along
+    each axis.\\
+    May 12 & Solve increasingly difficult benchmark worlds, implementing
+    knowledge graphs and other higher level tools.\\
+    May 19 & Begin writing final paper. Continue solving increasingly
+    complex worlds.\\
+    May 24 & Finish paper. Prepare final presentation. Measure agent's
+    performance on traditional hand-authored games such as Zork,
+    Christminster, Anchorhead and Curses.\\
+\end{tabular}
+
+\section{Deliverables}
+
+In addition to fully documented code and a paper describing my results,
+I will provide various visualizations of the agent's performance on
+worlds of a number of different difficulties. These will include
+animated transcripts of play and images generated by TextWorld's
+visualization tools of internal game states over the course of play.
+
+\printbibliography
+
+\end{document}
