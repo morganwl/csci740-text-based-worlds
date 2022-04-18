@@ -1,3 +1,9 @@
+# Ignore games objects
+*.z8
+*.z5
+*.z3
+*.gblorb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
