@@ -1,0 +1,60 @@
+\documentclass{beamer}
+
+\input{theme_presets}
+
+\usepackage[style=authoryear]{biblatex}
+\addbibresource{../text-based-worlds.bib}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\AtEveryBibitem{
+    \clearlist{language}
+    \clearfield{month}
+    \clearfield{series}
+    \clearfield{venue}
+    \clearname{editor}
+    \clearlist{publisher}
+    \clearlist{location} % alias to field 'address'
+    \clearfield{doi}
+    \clearfield{url}
+    \clearfield{venue}
+    \clearfield{issn}
+    \clearfield{isbn}
+    \clearfield{urldate}
+    \clearfield{urlyear}
+    \clearfield{urlmonth}
+    \clearfield{urlday}
+    \clearfield{eventdate}
+    \clearfield{pages}
+    %\clearfield{booktitle}
+    %\clearfield{journaltitle}
+    %\clearfield{number}
+    %\clearfield{volume}
+}
+
+\usepackage{caption}
+
+\title{Untitled Text-Based Worlds Project}
+\subtitle{Preliminary Presentation}
+\author{Morgan Wajda-Levie}
+\date{May 3, 2022}
+
+\newcommand{\game}[1]{\emph{#1}}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Problem description and goals
+\input{description}
+% State of the art / related work
+\input{related}
+% Approach
+\input{approach}
+% Challenges so far
+\input{challenges}
+% Bibliography
+\input{bibliography}
+
+\end{document}

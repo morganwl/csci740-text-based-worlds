@@ -1,0 +1,46 @@
+\section{State-of-the-art and related work}
+
+\begin{frame}
+
+    \frametitle{Existing text-based game agents}
+    \begin{description}
+        \item[BYUAgent]
+
+            Extracts nouns from game text and combines them with
+            pre-generated verb list, with the help of word embeddings.
+            Stores verb/noun combinations that produce a result. Winner
+            of IEEE CIG 2016 Text-based adventure AI competition.
+        \item[Golovin]
+
+            Operates in one of 5 command generator modes, based on
+            current game environment. Uses word embeddings trained
+            on text-based game walkthroughs, tutorials and narrative
+            fiction.
+        \item[NAIL]
+
+            Independent modules compete for control of the agent based
+            on \emph{eagerness}. Uses a knowledge graph to track world
+            state. Relies on heavily tuned command sets common to
+            text-based games. Winner of IEEE CIG 2018 Text-based AI
+            competition.
+    \end{description}
+    (\cite{atkinson_text-based_2019}, \cite{ricks_byu-agent-2016_2019},
+    \cite{hausknecht_nail_2019})
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{AI frameworks for text-based games}
+    \begin{description}
+        \item[Jericho]
+
+            A python-based library for using learning agents with
+            text-based games.
+            \parencite{hausknecht_interactive_2020}
+        \item[TextWorld]
+            
+            A python-based library for procedurally generating
+            text-based games.
+            \parencite{cote_textworld_2019}
+    \end{description}
+\end{frame}
