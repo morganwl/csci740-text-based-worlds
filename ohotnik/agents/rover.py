@@ -13,8 +13,13 @@ TextWorld for flexibility"""
 # Check every word to see if it seems to be a direction
 # Add that to knowledge-base
 
-DIRECTIONS = ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']
+DIRECTIONS = ['north', 'south', 'east', 'west', 'up', 'down',
+              'northwest', 'northeast', 'southwest', 'southeast']
+REJECTIONS = ["I don't know the word"]
 MODES = [EXPLORATION, EXPLOITATION] = [1, 2]
+DEBUG = True
+
+from random import shuffle
 
 
 def tokenize(s):
@@ -22,11 +27,39 @@ def tokenize(s):
     punctuation."""
     buffer = []
     for c in s:
-        if c.isalnum() or c == '-':
+        if c.isalnum():
             buffer.append(c.lower())
         elif buffer:
             yield ''.join(buffer)
             buffer = []
+    if buffer:
+        yield ''.join(buffer)
+
+
+def split_location(s):
+    """Returns a cleaned (location, description) pair."""
+    # TO-DO: This is a clumsy-ass way of doing this
+    # import pdb
+    # pdb.set_trace()
+    lines = (line for line in s.split('\n'))
+    line = ''
+    while line == '':
+        try:
+            line = next(lines)
+            # print('>', line)
+        except StopIteration:
+            return '', ''
+    location = clean(line)
+    description = '\n'.join([line for line in lines if line != ''])
+    # print(location)
+    # print(description)
+    return location, description
+
+
+def clean(s):
+    """Returns a cleaned version of the string with punctuation and
+    trailing spaces removed."""
+    return ' '.join(tokenize(s))
 
 
 class TreeNode:
@@ -69,6 +102,12 @@ class RoverKnowledge:
                                                   location and direction
                                                   returning destination
         """
+        # TO-DO: Learn to recognize different locations with the same
+        # name
+        # I think the way to do this is treat locations as the same
+        # until they aren't, and then split them in two, marking all
+        # knowledge about them as "uncertain", but this will require our
+        # as-yet undeveloped uncertainty model
         if observation[0] == 'exit':
             predicate, location, direction = observation
             self.add_exit(location, direction)
@@ -148,12 +187,9 @@ class RoverKnowledge:
 
     def ask_list(self, location, prop):
         obj = self.locations.get(location, None)
-        # print(obj)
         if obj is not None:
             obj = obj.get(prop, None)
-            # print(obj)
             if obj is not None:
-                # print(obj)
                 if prop in self.predicates:
                     return obj
                 return obj.items()
@@ -196,8 +232,9 @@ class RoverKnowledge:
         if 'go' not in self.locations[location]:
             self.locations[location]['go'] = {}
         if (direction in self.locations[location]['go'] and
-                destination != self.locations[location]['go']['direction']):
-            raise Exception('Conflicting destinations found.')
+                destination != self.locations[location]['go'][direction]):
+            # print('Warning: conflicting destinations found.')
+            pass
         self.locations[location]['go'][direction] = destination
 
 
@@ -207,11 +244,14 @@ class RoverOne:
     def __init__(self):
         self.know_surroundings = False
         self.location = None
-        self.last_command = None
+        self.loc_description = ''
+        self.last_command = ''
         self.goals = []
         self.exploration_goals = []
         self.mode = EXPLORATION
         self.kb = RoverKnowledge()
+        self.last_parse = None
+        self.current_goal = None
         pass
 
     # API
@@ -228,32 +268,18 @@ class RoverOne:
             self.kb.tell(o)
         # ask knowledge base for next move
         action = None
-        self.know_surroundings = self.last_command == 'look'
         if not self.know_surroundings:
+            self.current_goal = 'knowledge'
             action = 'look'
+            self.know_surroundings = True
         elif self.goals:
             path = self.kb.path(self.location, self.goals[-1])
             if path:
+                self.current_goal = path
                 action = f'go {path[0]}'
-        while action is None:
-            if self.exploration_goals:
-                dest, direction = self.exploration_goals[-1]
-                if dest == self.location:
-                    self.exploration_goals.pop()
-                    action = f'go {direction}'
-                    break
-                path = self.kb.path(self.location, dest)
-                if path:
-                    action = f'go {path[0]}'
-                    break
-            if self.exploration_goals:
-                print(self.exploration_goals)
-            dest, direction = self.kb.explore(self.location)
-            if dest:
-                self.exploration_goals.append((dest, direction))
-            else:
-                self.exploration_goals.extend([
-                    (self.location, d) for d in DIRECTIONS])
+        else:
+            action = self.act_explore()
+
         self.last_command = action
         return action
 
@@ -261,7 +287,55 @@ class RoverOne:
         """Notify the agent that the game has finished."""
         pass
 
+    def debug_info(self):
+        go_graph = []
+        for location in self.kb.locations:
+            if 'go' in self.kb.locations[location]:
+                go_graph.extend(
+                    [(location, direction, dest)
+                     for direction, dest in
+                     self.kb.locations[location]['go'].items()])
+        return {
+            'location': self.location,
+            'last_parse': self.last_parse,
+            'goals': self.goals,
+            'exploration_goals': self.exploration_goals,
+            'go graph': go_graph,
+            'current goal': self.current_goal,
+        }
+
     # Implementation
+    def act_explore(self):
+        """Return an action that helps to uncover new knowledge."""
+        dest, direction = self.kb.explore(self.location)
+        if dest:
+            self.exploration_goals.append((dest, direction))
+        if self.exploration_goals:
+            dest, direction = self.exploration_goals[-1]
+            if dest == self.location:
+                self.exploration_goals.pop()
+                self.current_goal = (dest, direction)
+                return f'go {direction}'
+            path = self.kb.path(self.location, dest)
+            if path:
+                self.current_goal = path
+                return f'go {path[0]}'
+        new_exploration = [(self.location, d) for d in DIRECTIONS
+            if self.kb.ask('go', self.location, d) is None]
+        if new_exploration:
+            dest, direction = new_exploration.pop()
+            self.exploration_goals.extend(new_exploration)
+            self.current_goal = (dest, direction)
+            return f'go {direction}'
+        exits = [d for d in DIRECTIONS
+                 if self.kb.ask('go', self.location, d) != self.location]
+        shuffle(exits)
+        if exits:
+            direction = exits.pop()
+            self.current_goal = direction
+            return f'go {direction}'
+        self.current_goal = 'knowledge'
+        return 'look'
 
     def parse(self, game_state):
         """Parses input from the game_state and returns a list of
@@ -275,12 +349,52 @@ class RoverOne:
         #
         # 3. Game feedback when a command changes the world state
         observations = []
+        msg = game_state['feedback']
 
+        if self.is_rejection(msg):
+            return observations
+        if self.last_command.startswith('go'):
+            # for the moment, we will treat failed movements as
+            # self-referential loops
+            if self.is_move(msg):
+                observations = self.parse_move(msg)
+            else:
+                observations = self.parse_move(f'{self.location}\n')
+            return observations
         # Assume input is in response to the 'look' command
-        if self.last_command == 'look':
-            location, feedback = game_state['feedback'].split('\n', 1)
-            self.location = location.lower()
+        if self.last_command == 'look' and '\n' in msg:
+            location, feedback = split_location(msg)
             for word in tokenize(feedback):
                 if word in DIRECTIONS:
-                    observations.append(('exit', self.location, word))
+                    observations.append(('exit', location, word))
+            self.location = location
         return observations
+
+    def parse_move(self, msg):
+        location, feedback = split_location(msg)
+        observations = [('exit', location, word)
+                        for word in tokenize(feedback)
+                        if word in DIRECTIONS]
+        direction = self.last_command.replace('go ', '')
+        observations.append(('go', self.location, direction,
+                             location))
+        self.location = location
+        return observations
+
+    def is_rejection(self, msg):
+        for r in REJECTIONS:
+            if msg.startswith(r):
+                if DEBUG:
+                    self.last_parse = 'rejection'
+                return True
+
+    def is_move(self, msg):
+        if '\n' not in msg:
+            return False
+        lines = msg.split('\n')
+        if lines[0].endswith('.'):
+            return False
+        if DEBUG:
+            self.last_parse = 'move'
+        return True
+
