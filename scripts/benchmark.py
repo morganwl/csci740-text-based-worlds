@@ -4,19 +4,22 @@
 games."""
 
 import os
+import sys
 
 from textworld.agents import NaiveAgent
 import driver
+from driver import get_root
 
+OHOTNIK_ROOT = get_root()
+OHOTNIK_GAMES = os.path.join(OHOTNIK_ROOT, 'games')
 
-def get_root():
-    """Returns the root directory for finding games and agents."""
-    if 'VIRTUAL_ENV' in os.environ:
-        return os.path.dirname(os.environ['VIRTUAL_ENV'])
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from ohotnik.agents import RoverOne
+except ModuleNotFoundError:
+    sys.path.insert(0, OHOTNIK_ROOT)
+    from ohotnik.agents import RoverOne
 
-
-DEFAULT_AGENTS = (NaiveAgent,)
+DEFAULT_AGENTS = (NaiveAgent, RoverOne)
 DEFAULT_GAMES = ('zork1.z5',)
 DEFAULT_GAMES_DIR = os.path.join(get_root(), 'games')
 DEFAULT_MOVE_LIMIT = 1000

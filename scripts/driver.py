@@ -6,7 +6,7 @@ import argparse
 import os
 from time import sleep
 
-import textworld
+from textworld import start
 from textworld.agents import NaiveAgent
 
 
@@ -31,7 +31,7 @@ def parse_args():
 
 def main(game, agent, move_limit=100, quiet=False, pause=.5):
     """Runs a single agent through a single game."""
-    env = textworld.start(game)
+    env = start(game)
     game_state = env.reset()
     agent = agent()
     reward, done = 0, False
@@ -44,6 +44,7 @@ def main(game, agent, move_limit=100, quiet=False, pause=.5):
         command = agent.act(game_state, reward, done)
         if not quiet:
             print(command)
+        print(game_state['feedback'])
         game_state, reward, done = env.step(command)
         if not quiet:
             print(game_state['raw'])
