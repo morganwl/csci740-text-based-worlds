@@ -14,15 +14,15 @@
   - Properties, instantiations of Predicates on given variables
     - One Properties table for each arity of Predicate (I add these
       dynamically as new Predicates are encountered)
-  - Aliases, a sort of function that only works with explicitly declared
-    variables and Predicates.
-    - An alias finds the variable for which a Predicate and a number of
-      other variables is True.
+  - Functions, i.e. a statement taking one or more arguments which
+    evaluates to a single variable.
+      - For this logic, functions may only be reasoned upon if they
+        evaluate to an explicitly defined variable.
   - Predicates, abstract Predicates
   - Rules, rules for the outcomes of actions when certain preconditions
     are met.
 - So far, I've got it working with Asking and Telling of
-  Predicates/Properties. Still need to set up Rules and Aliases.
+  Predicates/Properties. Still need to set up Rules and Functions.
 
 ### Friday, May 6
 

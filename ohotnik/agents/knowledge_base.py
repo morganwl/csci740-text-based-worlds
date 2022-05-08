@@ -69,12 +69,14 @@ class SQL_KnowledgeBase(KnowledgeBase):
 
     def tell(self, observation):
         """Assigns a property to a variable in the knowledge base.
-        Observations should be of the for (prop, variables, value). It
-        is currently the responsibility of the parser to find the KBName
-        for the appropriate variable."""
+        Observations should be of the for (prop, variables, value).
+        Variable names should correspond to ParserNames, but are
+        expected to refer to be unique with regards to all objects
+        within a certain Tell statement."""
         prop, variables, value = observation
         arity = len(variables)
         cursor = self.connection.cursor()
+        variables = self.add_variables(variables, cursor)
         if not self.has_predicate(prop, cursor):
             self.add_predicate(prop, arity, cursor)
         if not self.has_properties(arity, cursor):
@@ -82,11 +84,15 @@ class SQL_KnowledgeBase(KnowledgeBase):
         self.set(prop, variables, value, cursor)
         self.connection.commit()
 
-    def ask(self, observation):
-        prop, variables, value = observation
+    def ask(self, query):
+        """Queries the knowledge base for a predicate with explicit
+        variales. Returns True if the value of the predicate matches the
+        provided value. Returns None if the answer is not contained in
+        the knowledge base."""
+        prop, variables, value = query
         arity = len(variables)
         table = self.proptable(arity)
-        vars_where = self.vars_where(variables, arity)
+        vars_where = self.vars_where(arity)
         cursor = self.connection.cursor()
         cursor.execute(
             (f"SELECT Value from {table} WHERE "
@@ -96,6 +102,9 @@ class SQL_KnowledgeBase(KnowledgeBase):
         if fetch is None:
             return None
         return bool(fetch[0]) == value
+
+    def ask_vars(self, query):
+        """Returns a list of all vars for which the query is True."""
 
     def set(self, prop, variables, value, cursor=None):
         """Assigns a value to a property in the knowledge base; performs
@@ -136,13 +145,56 @@ class SQL_KnowledgeBase(KnowledgeBase):
             "SELECT name FROM sqlite_master WHERE type='table';")
         return cursor.fetchall() == []
 
+    def expand_function(self, function, variables, cursor=None):
+        """Returns the KB_Name of the variable referenced by a
+        function."""
+        if cursor is None:
+            cursor = self.connection.cursor()
+        sql_select_on(cursor, ('Predicate', 'Argument', 'Arity'),
+                      ('Functions', 'Predicate'), ('Predicates', 'Name'),
+                      where=(('Functions.Name',), (function,)))
+        # cursor.execute(
+        #     ("SELECT (Predicate, Argument, Arity) FROM Functions "
+        #      "WHERE Name = ?;"),
+        #     (function,))
+        (predicate, argument, arity) = cursor.fetchone()
+        sql_select_on(cursor, 'KBName', ('Variables', 'KBName'),
+                      (f'Properties_{arity}', f'Arg{argument+1}'),
+                      where=(('Predicate',), (predicate,)),
+                      variables=variables, exclude=argument)
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+        return None
+
+    def add_variables(self, variables, cursor=None):
+        """Adds variables based on parser names and returns the
+        KBName."""
+        # TO-DO: Create a new KBName
+        if cursor is None:
+            cursor = self.connection.cursor()
+        kb_names = []
+        for var in variables:
+            name = cursor.execute(
+                "SELECT KBName FROM Variables WHERE ParserName = ?",
+                (var,)).fetchone()
+            if name is not None:
+                name = name[0]
+            else:
+                name = var
+                cursor.execute(
+                    "INSERT INTO Variables VALUES (?, ?)",
+                    (name, var))
+            kb_names.append(name)
+        return kb_names
+
     def has_predicate(self, predicate, cursor=None):
         """Returns True if a predicate exists in the knowledge base."""
         if cursor is None:
             cursor = self.connection.cursor()
         cursor.execute(
             "SELECT Name FROM Predicates WHERE Name=?;",
-            [predicate])
+            (predicate,))
         return cursor.fetchone() is not None
 
     def add_predicate(self, predicate, arity, cursor=None):
@@ -150,7 +202,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
         if cursor is None:
             cursor = self.connection.cursor()
         cursor.execute(
-            "INSERT INTO Predicates values(?, ?);",
+            "INSERT INTO Predicates values(?, ?, FALSE);",
             (predicate, arity))
 
     def has_properties(self, arity, cursor=None):
@@ -191,17 +243,24 @@ class SQL_KnowledgeBase(KnowledgeBase):
                            for i, var in enumerate(variables)])))
         return cursor.fetchone()
 
+    def add_function(self, name, predicate, argument, cursor=None):
+        """Adds a new function to the knowledge base."""
+        if cursor is None:
+            cursor = self.connection.cursor()
+        cursor.execute(
+            "INSERT INTO Functions VALUES (?, ?, ?)",
+            (name, predicate, argument))
+
     @staticmethod
     def proptable(arity):
         return f'Properties_{arity}'
 
     @staticmethod
-    def vars_where(variables, arity=None):
+    def vars_where(arity, exclude=None):
         """Creates a 'WHERE Argi = ?' SQL statement with the appropriate
         number of arguments."""
-        if arity is None:
-            arity = len(variables)
-        return ' AND '.join([f'Arg{i+1} = ?' for i in range(arity)])
+        return ' AND '.join([f'Arg{i+1} = ?' for i in range(arity)
+                             if i != exclude])
 
 
 class Variable:
@@ -271,10 +330,50 @@ class Rule:
         return delta
 
 
+def sql_select():
+    """Performs an SQL select command."""
+
+
+def sql_select_on(cursor, columns, left, right,
+                  variables=None, exclude=None, where=None):
+    """Performs an SQL select command on an inner join."""
+    if not isinstance(columns, str):
+        columns = ', '.join(columns)
+    left_tab, left_col = left
+    right_tab, right_col = right
+    sql = [(f"SELECT {columns} FROM {left_tab} "
+            f"INNER JOIN {right_tab} "
+            f"ON {left_tab}.{left_col} = {right_tab}.{right_col} ")]
+    params = []
+    if variables:
+        arity = len(variables)
+        if exclude:
+            arity += 1
+        sql.append(vars_where(arity, exclude))
+        params.extend(variables)
+    if where:
+        sql.extend([f'{variable} = ?' for variable in where[0]])
+        params.extend(where[1])
+    cursor.execute(' AND '.join(sql), params)
+
+
+def vars_where(arity, exclude=None):
+    """Creates a 'WHERE Argi = ?' SQL statement with the appropriate
+    number of arguments."""
+    return ' AND '.join([f'Arg{i+1} = ?' for i in range(arity)
+                         if i != exclude])
+
+
 if __name__ == '__main__':
     kb = SQL_KnowledgeBase()
     kb.tell(('exit', ('room1-1', 'south'), False))
     print(kb.ask(('exit', ('room1-1', 'south'), False)))
+    print(kb.ask(('exit', ('room2-1', 'south'), True)))
+    kb.tell(('connects', ('room1-1', 'south', 'room2-1'), True))
+    kb.add_function('destination', 'connects', 2)
+    print(kb.ask(('connects', ('room1-1', 'south', 'room2-1'), True)))
+    print(kb.expand_function('destination', ('room1-1', 'south')))
+
 
 # action(open, o) and door(o) and at(P, location(door)) and
 # !locked(door) implies next(!closed(door))

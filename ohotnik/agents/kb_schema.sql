@@ -27,10 +27,11 @@ CREATE TABLE IF NOT EXISTS Properties_1 (
 
 CREATE TABLE IF NOT EXISTS Predicates (
     Name            TEXT PRIMARY KEY,
-    Arity           TINYINT UNSIGNED
+    Arity           TINYINT UNSIGNED,
+    Implicit        BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS Aliases (
+CREATE TABLE IF NOT EXISTS Functions (
     Name            TEXT PRIMARY KEY,
     Predicate       TEXT,
     Argument        TINYINT UNSIGNED
