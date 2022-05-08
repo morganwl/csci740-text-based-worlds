@@ -2,6 +2,35 @@
 
 ## Changes, Notes, To-Do
 
+### Saturday, May 7
+
+- I've decided to try using an SQL database for storing my Knowledge
+  Base. This let's me leverage the databases relational engine for
+  efficiently querying predicates and aliases. For now, I think I will
+  implement a very simple RE parser for my logic statements, but I might
+  regret that and jump to Tatsu.
+- Basic schema is:
+  - Variables, i.e. all objects known or thought to exist in the world
+  - Properties, instantiations of Predicates on given variables
+    - One Properties table for each arity of Predicate (I add these
+      dynamically as new Predicates are encountered)
+  - Aliases, a sort of function that only works with explicitly declared
+    variables and Predicates.
+    - An alias finds the variable for which a Predicate and a number of
+      other variables is True.
+  - Predicates, abstract Predicates
+  - Rules, rules for the outcomes of actions when certain preconditions
+    are met.
+- So far, I've got it working with Asking and Telling of
+  Predicates/Properties. Still need to set up Rules and Aliases.
+
+### Friday, May 6
+
+- Starting on RoverTwo, trying to choose best knowledge representation
+  - Linear logic approach uses Tatsu and provides fully featured logic
+    representation, but would require a couple of days just to learn the
+    (separate) logic language
+
 ### Thursday, May 5
 
 - RoverOne, a crude knowledge-based agent is able to solve all
