@@ -1,0 +1,45 @@
+@@grammar :: RoverLogic
+
+variable = ?"[A-Z]" ;
+constant = ?"[\w_-]+" ;
+predName = ?"[+-]?[\w_-]+" ;
+funcName = ?"[+-]?[\w_-]+" ;
+
+start = sentence $ ;
+
+sentence =
+    | atomicSentence
+    | complexSentence
+;
+
+atomicSentence =
+    | 'True'
+    | 'False'
+    | predicate
+;
+
+complexSentence =
+    | @+:'!' @+:sentence
+    | '(' @:'&'<{sentence}+ ')'
+    | @+:`->` '('@+:sentence '->' @+:sentence')'
+    | @+:`:`  '('@+:sentence ':' @+:sentence')'
+    | @+:`=`  '('@+:sentence '=' @+:sentence')'
+;
+
+predicate =
+    @:(predName) '(' 
+     @+:','.{term}+
+    ')'
+;
+
+term =
+    | function
+    | variable
+    | constant
+;
+
+function =
+    @:funcName '('
+    @+:','.{term}+
+    ')'
+;

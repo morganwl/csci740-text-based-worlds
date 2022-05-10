@@ -2,6 +2,11 @@
 
 ## Changes, Notes, To-Do
 
+### Sunday, May 8
+
+- SQL Knowledge Base is capable of establishing entailment on a syntax
+  tree containing predicates and functions.
+
 ### Saturday, May 7
 
 - I've decided to try using an SQL database for storing my Knowledge

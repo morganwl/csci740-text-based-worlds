@@ -4,6 +4,8 @@ from itertools import zip_longest
 import os
 import sqlite3
 
+from ohotnik.agents.logic import RoverLogicParser
+
 con = sqlite3.connect(':memory:')
 
 KB_SCHEMA = os.path.join(
@@ -36,8 +38,8 @@ class KnowledgeBase:
         for prop, variables, value in model.items():
             current_value = self.ask_value(prop, variables)
             if current_value != value:
-                changed.set(prop, variables, current_value)
-                self.set(prop, variables, value)
+                changed.store(prop, variables, current_value)
+                self.store(prop, variables, value)
         return changed
 
     def merge(self, model):
@@ -45,11 +47,11 @@ class KnowledgeBase:
         they do not conflict with values in this model."""
         for prop, args in model.items():
             if self.ask_value(prop, *args[:-1]) is None:
-                self.set(prop, *args)
+                self.store(prop, *args)
 
     # Private API
-    def set(self, prop, variables, value):
-        """Directly sets a value in the model, bypassing any additional
+    def store(self, prop, variables, value):
+        """Directly store a value in the model, bypassing any additional
         actions that might be performed by the Tell method."""
         raise NotImplementedError()
 
@@ -81,12 +83,146 @@ class SQL_KnowledgeBase(KnowledgeBase):
             self.add_predicate(prop, arity, cursor)
         if not self.has_properties(arity, cursor):
             self.add_properties(arity, cursor)
-        self.set(prop, variables, value, cursor)
+        self.store(prop, variables, value, cursor)
         self.connection.commit()
+
+    def entails(self, sentence, cursor=None):
+        parser = RoverLogicParser()
+        return self.entails_tree(parser.parse(sentence))
+
+    def entails_op(self, tree, cursor=None):
+        if isinstance(tree, (bool, type(None))):
+            return tree
+        if cursor is None:
+            cursor = self.connection.cursor()
+        operator = tree[0]
+        if operator in ('&', '|', '!'):
+            return self.entails_bool(operator, tree[1], cursor)
+        if tree[0] in ('->', ':'):
+            return self.entails_implication(operator, tree[1], cursor)
+        return self.fetch(operator, tree[1], cursor)
+
+    def entails_tree(self, sentence, cursor=None):
+        """Given a sentence as a prefix syntax tree, returns True if
+        that sentence is entailed by the KB, False if that sentence is
+        not entailed, or None if insufficient information is contained
+        in the KB."""
+        print(sentence)
+        if isinstance(sentence, (bool, type(None))):
+            return sentence
+        if cursor is None:
+            cursor = self.connection.cursor()
+        if sentence[0] in ('&', '|', '!'):
+            return self.entails_bool(sentence, cursor)
+        return self.fetch(sentence, cursor)
+
+    def entails_bool(self, sentence, cursor=None):
+        """Given a sentence known to have a boolean operator, return
+        True if that sentence is entailed, False if that sentence is not
+        entailed, and None if there is not enough information."""
+        if cursor is None:
+            cursor = self.connection.cursor()
+        operator = sentence[0]
+        for term in sentence[1:]:
+            term = self.entails_tree(term, cursor)
+            if isinstance(term, str):
+                raise Exception('Poorly formed sentence.')
+            if operator == 'AND' and not term:
+                return False
+            if operator == 'OR' and term:
+                return True
+            if operator == 'NOT':
+                return not term
+        return operator == 'AND'
+
+    def fetch(self, sentence, cursor):
+        """Given a sentence that is known to be either a Predicate or
+        Function query, return the value of that Predicate or
+        Function."""
+        if isinstance(sentence, str):
+            return sentence
+        if cursor is None:
+            cursor = self.connection.cursor()
+        operator = sentence[0]
+        cursor.execute(
+            "SELECT Name FROM Functions WHERE Name = ?",
+            (operator,))
+        if cursor.fetchone() is not None:
+            return self.fetch_function(sentence, cursor)
+        return self.fetch_predicate(sentence, cursor)
+
+    def fetch_predicate(self, sentence, cursor):
+        if cursor is None:
+            cursor = self.connection.cursor()
+        predicate = sentence[0]
+
+        # Return None if Predicate does not exist
+        result = cursor.execute(
+            ("SELECT Arity, Implicit FROM Predicates "
+             "WHERE Name = ?"),
+            (predicate,)).fetchone()
+        if result is None:
+            return None
+        arity, implicit = result
+
+        # Check arity
+        if arity != len(sentence) - 1:
+            msg = (f'Predicate {predicate} expected {arity} arguments '
+                   f'but got {len(sentence) - 1}')
+            raise Exception(msg)
+
+        params = [predicate]
+        for term in sentence[1:]:
+            term = self.fetch(term, cursor)
+            if term is None and not implicit:
+                return None
+            params.append(term)
+
+        result = cursor.execute(
+            (f"SELECT Value FROM Properties_{arity} WHERE "
+             "Predicate = ? AND " + 
+             ' AND '.join([f'Arg{i} = ?' for i in range(arity)])),
+            params).fetchone()
+        if result is None:
+            if implicit:
+                return False
+            return None
+        return bool(result[0])
+
+    def fetch_function(self, sentence, cursor):
+        if cursor is None:
+            cursor = self.connection.cursor()
+        function = sentence[0]
+        result = cursor.execute(
+            ("SELECT Predicate, Argument, Arity FROM Functions "
+             "INNER JOIN PREDICATES ON "
+             "Functions.Predicate = Predicates.Name "
+             "AND Functions.Name = ?"),
+            (function,)).fetchone()
+        if result is None:
+            return None
+        predicate, argument, arity = result
+
+        params = [predicate]
+        for term in sentence[1:]:
+            term = self.fetch(term, cursor)
+            if term is None:
+                return None
+            params.append(term)
+
+        result = cursor.execute(
+            (f"SELECT Arg{argument} FROM Properties_{arity} WHERE "
+             "Predicate = ? AND " +
+             " AND ".join([f'Arg{i} = ?' for i in range(arity)
+                           if i != argument])),
+            params).fetchone()
+        if result is None:
+            return None
+        return result[0]
 
     def ask(self, query):
         """Queries the knowledge base for a predicate with explicit
-        variales. Returns True if the value of the predicate matches the
+        variables. Returns True if the value of the predicate matches the
         provided value. Returns None if the answer is not contained in
         the knowledge base."""
         prop, variables, value = query
@@ -106,12 +242,12 @@ class SQL_KnowledgeBase(KnowledgeBase):
     def ask_vars(self, query):
         """Returns a list of all vars for which the query is True."""
 
-    def set(self, prop, variables, value, cursor=None):
+    def store(self, prop, variables, value, cursor=None):
         """Assigns a value to a property in the knowledge base; performs
         no error checking or additional record keeping."""
         arity = len(variables)
         table = f'Properties_{arity}'
-        var_columns = ', '.join([f'Arg{i+1}' for i in range(arity)])
+        var_columns = ', '.join([f'Arg{i}' for i in range(arity)])
         var_params = ', '.join(['?'] * arity)
         if cursor is None:
             cursor = self.connection.cursor()
@@ -127,7 +263,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
                 f"UPDATE {table} SET Predicate = ?, ?, Value = ? " +
                 "WHERE Prop_ID = ?",
                 f'Properties_{arity}', prop,
-                ', '.join([f'Arg{i+1} = {var}'
+                ', '.join([f'Arg{i} = {var}'
                            for i, var in enumerate(variables)]),
                 value, prop_id)
 
@@ -159,7 +295,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
         #     (function,))
         (predicate, argument, arity) = cursor.fetchone()
         sql_select_on(cursor, 'KBName', ('Variables', 'KBName'),
-                      (f'Properties_{arity}', f'Arg{argument+1}'),
+                      (f'Properties_{arity}', f'Arg{argument}'),
                       where=(('Predicate',), (predicate,)),
                       variables=variables, exclude=argument)
         result = cursor.fetchone()
@@ -225,7 +361,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
             '\n'.join([f"CREATE TABLE {table} (",
                        "Prop_ID INTEGER PRIMARY KEY AUTOINCREMENT,",
                        '\n'.join([
-                           f'Arg{i+1} TEXT NOT NULL,'
+                           f'Arg{i} TEXT NOT NULL,'
                            for i in range(arity)]),
                        "Predicate TEXT NOT NULL,"
                        "Value);"]))
@@ -239,7 +375,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
         cursor.execute(
             f"SELECT Prop_ID from {table} WHERE Predicate = ? AND ?",
             (prop,
-             ' AND '.join([f'Arg{i+1} = {var}'
+             ' AND '.join([f'Arg{i} = {var}'
                            for i, var in enumerate(variables)])))
         return cursor.fetchone()
 
@@ -259,7 +395,7 @@ class SQL_KnowledgeBase(KnowledgeBase):
     def vars_where(arity, exclude=None):
         """Creates a 'WHERE Argi = ?' SQL statement with the appropriate
         number of arguments."""
-        return ' AND '.join([f'Arg{i+1} = ?' for i in range(arity)
+        return ' AND '.join([f'Arg{i} = ?' for i in range(arity)
                              if i != exclude])
 
 
@@ -360,19 +496,48 @@ def sql_select_on(cursor, columns, left, right,
 def vars_where(arity, exclude=None):
     """Creates a 'WHERE Argi = ?' SQL statement with the appropriate
     number of arguments."""
-    return ' AND '.join([f'Arg{i+1} = ?' for i in range(arity)
+    return ' AND '.join([f'Arg{i} = ?' for i in range(arity)
                          if i != exclude])
+
+
+# At any point, the KB keeps two models: the model of the state before
+# an action is taken, and the model of the state after an action is
+# taken. For a linear implication operator, all terms on the left side
+# of the operator are assumed to reference the prior model, and all
+# terms to the right side of the operator are assumed to reference the
+# posterior model.
+#
+# For a traditional implication, it is often useful to reference models
+# explicitly. In this case, the '-' operator refers to the prior
+# model and the '+' operator refers to the posterior model. When no
+# model is specified, all the model is selected by context.
+rules = [
+    '+action_obj(go, D), $exit(location(p), D) : at(p, destination(D))',
+    '+action_obj(go, D), !(=, at(p), +at(p)) > connections(at(p), D, +at(p))'
+]
 
 
 if __name__ == '__main__':
     kb = SQL_KnowledgeBase()
-    kb.tell(('exit', ('room1-1', 'south'), False))
-    print(kb.ask(('exit', ('room1-1', 'south'), False)))
-    print(kb.ask(('exit', ('room2-1', 'south'), True)))
-    kb.tell(('connects', ('room1-1', 'south', 'room2-1'), True))
+    kb.add_function('location', 'at', 1)
     kb.add_function('destination', 'connects', 2)
-    print(kb.ask(('connects', ('room1-1', 'south', 'room2-1'), True)))
-    print(kb.expand_function('destination', ('room1-1', 'south')))
+    kb.add_function('last_action', 'action', 1)
+    kb.add_function('action_obj_1', 'action_obj', 1)
+
+    kb.tell(('exit', ('room1-1', 'south'), True))
+    kb.tell(('connects', ('room1-1', 'south', 'room2-1'), True))
+    kb.tell(('at', ('~', 'room1-1'), True))
+    kb.tell(('action', ('action_obj'), True))
+    kb.tell(('action_obj', ('go', 'south'), True))
+
+    # print(kb.ask(('exit', ('room1-1', 'south'), False)))
+    # print(kb.ask(('exit', ('room2-1', 'south'), True)))
+    # print(kb.ask(('connects', ('room1-1', 'south', 'room2-1'), True)))
+    # print(kb.expand_function('destination', ('room1-1', 'south')))
+    print(kb.entails('exit(room1-1, south)'))
+    print(kb.entails('connects(room1-1, south, destination(room1-1, south))'))
+    print(kb.entails('action_obj(go, south)'))
+    print(kb.entails('(action_obj(go, action_obj_1(go)) & exit(location(p), action_obj_1(go)))'))
 
 
 # action(open, o) and door(o) and at(P, location(door)) and

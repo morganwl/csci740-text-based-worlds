@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS Variables (
 CREATE TABLE IF NOT EXISTS Properties_1 (
     Prop_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
     Predicate       TEXT NOT NULL,
-    Arg1            TEXT NOT NULL,
+    Arg0            TEXT NOT NULL,
     Value           BOOLEAN
 );
 
