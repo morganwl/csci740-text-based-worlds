@@ -1,0 +1,51 @@
+\section{Related work}
+
+\subsection{Agents for playing text-based games}
+
+Many AI agents have been written to attempt text-based games, some of
+which were entered in the 2016, 2017 and 2018 \emph{Text-Based Adventure
+AI Competition}. The first two competitions pitted agents against a
+single game developed specifically for the competition, whereas the 2018
+competition evaluated agents on their performance on 20 previously
+released games\cite{atkinson_text-based_2019}. Agents were given 1000
+moves per run of a game, repeated 10 times, and their average score,
+measured as a fraction of the total possible score, was compared.  Three
+agents have publicly available source code, BYUAgent
+2016\cite{ricks_byu-agent-2016_2019}, Golovin\cite{kostka2017text} and
+NAIL\cite{hausknecht_nail_2019}. This source code, along with published
+work, provides some interesting approaches, and also elucidates some of
+the thorny sub-problems that researchers are attempting to solve.
+
+One particular challenge is identifying which verbs can be applied to
+which objects, called \emph{affordance extraction}. \agent{BYUAgent
+2016} uses word2vec word embeddings to create an \emph{affordance
+vector} between objects extracted from game text and a pre-defined list
+of verbs. Commands are generated from the most promising
+verbs.\cite{atkinson_text-based_2019}
+\agent{Golovin} learns command patterns by studying a collection of
+published game solutions (called \emph{walkthroughs}), tutorials and
+decompiled source code, and then uses a combination of LTSM neural
+networks trained on fantasy novels and a word2vec embedding to match
+those commands with objects extracted from scene
+descriptions.\cite{kostka2017text}
+\agent{NAIL} uses a 5-gram language model to estimate probable
+affordance between extracted objects and a hand-curated list of 561
+verbs mostly likely to occur in text-based
+games.\cite{hausknecht_nail_2019}
+
+Another challenge facing agents is building information about the
+environment as it is explored, especially creating a map of locations
+and pathways between them. Mapping, on its surface, seems simple enough
+--- rooms are almost always reached by traveling in cardinal directions,
+and these exits are usually (though not always) included in scene
+descriptions. Unfortunately, multiple locations might bear the same
+name, and the descriptions for locations can change over
+time. \agent{Golovin} uses a heuristic for
+identifying rooms and builds a simple room-direction graph. A MergeNode
+algorithm is performed after every movement to merge nodes with
+identical pathways to other nodes\cite{kostka2017text}. \agent{NAIL}
+builds a much more detailed knowledge graph that includes not only rooms
+and their exits, but also objects contained within those rooms. A fuzzy
+string match is used to establish room
+identity\cite{hausknecht_nail_2019}.
+

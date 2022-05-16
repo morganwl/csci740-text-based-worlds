@@ -1,0 +1,89 @@
+\section{Description}
+
+Text-based games, also called text adventures or interactive fiction,
+are a variety of computer games originally appearing in 1976 with the
+game \game{Colossal Cave}\cite{noauthor_adventure_2010}. The gameplay
+experience is meant to evoke reading a work of fiction, where the
+player controls a character, and through that character, the outcome of
+the story. Early text-based games tended to be a mixture of puzzles and
+exploration, with a simple goal, while more recent games have further
+explored the potential of narrative control with diverging storylines
+and interpretations. The games can be quite challenging and require
+identifying and solving puzzles with common sense reasoning to achieve a
+final goal. This challenge has recently made them an intriguing area of
+research in Artificial Intelligence, though a generalized agent capable
+of solving a wide range of text-based games remains
+elusive\cite{cote_textworld_2019}.
+
+Players in text-based games control a \emph{player character} in an
+environment which is rendered to the player entirely through prose
+descriptions. The environment, which is unique from one game to the
+next, generally models a lifelike world, governed by common sense rules.
+The player character (which we will, by the genre's convention, simply
+call \emph{player}), moves through discrete locations, or \emph{rooms}
+in this world and interacts with objects contained within. All of these
+actions are communicated to the game through natural language commands,
+typed at a prompt. The commands are interpreted by the game's parser,
+and the game responds, in natural language, based on the outcome of the
+player's action.
+
+While the prompt will accept any return-terminated string, the parser,
+based on the 1976 design, understands only a small subset of English
+vocabulary, with simple grammatical rules.\footnotemark Commands
+generally take the form of: \texttt{verb [noun phrase [adverb phrase]]},
+where \texttt{noun phrase} often denotes an object in the environment
+and \texttt{adverb phrase} often indicates a second object. Sample
+commands might be, ``\texttt{go north}'', ``\texttt{look under bed}''
+or ``\texttt{unlock wooden chest with bronze
+key}.''\cite{cote_textworld_2019} All recognized words have been
+explicitly coded, either by the authors of the parser, or by the authors
+of the individual game, but these words are not necessarily given to the
+player in an organized manner. Most games are written using one of a few
+widely available frameworks, which include a parser with a large
+vocabulary, but most games will make changes to that vocabulary or the
+parser itself. The parser will reject commands that it does not
+understand, though individual games might communicate this rejection in
+different ways. The game will also often inform players of commands that
+are understood but have no effect, or are deemed irrelevant to a game.
+
+\footnotetext{Text-based games have been published in many natural
+languages, including Dutch, French, German, and Russian, but this paper
+will focus exclusively on those available in English.} 
+
+As a problem for an artificial intelligence agent, text-based games
+present a number of clear challenges. The state space is finite, but
+potentially large, and only partially observable. The transition model
+is unknown, and the action-space is large, sparse and unknown. A verb
+might only have meaning when applied to a single object in the game, and
+it might only affect that object under specific conditions. Human
+players navigate this action space through a mixture of common sense,
+generalized and genre-specific knowledge, and ingenuity. Some games
+require the use of made-up words. All information is given to the player
+through natural language, from which meaningful state information and
+action outcomes must be extracted. Some information is given to the
+character unbidden, but other information must be asked explicitly by
+examining objects in the environment. Furthermore, each game has its own
+unique goal (or goals), which may or may not be clearly communicated to
+the player.
+
+[Why am I interested in this area of study?]
+
+While generalized text-based games remain unsolved by AI agents, agents
+have achieved partial successes in those environments, and have been
+able to solve constrained games created as benchmarks. This project aims
+to create an AI agent capable of solving games that have been
+constrained in the goal and the kind of puzzles that must be solved to
+achieve it. Namely, the agent will be asked to solve mazes into four
+difficulty levels.
+
+\begin{enumerate}
+    \item Trivial mazes (interconnected rooms without obstacles)
+    \item Familiar obstacles requiring one action, such as doors
+    \item Composite obstacles requiring multiple actions, such as locked
+        doors
+    \item Complex, novel obstacles, such as laying a plank across a
+        chasm
+\end{enumerate}
+
+The agent's performance will be compared to existing agents, and,
+hopefully, it will exceed them under some if not all circumstances.

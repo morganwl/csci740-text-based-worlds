@@ -1,0 +1,18 @@
+\newlist{todolist}{itemize}{2}
+\setlist[todolist]{label=$\square$}
+
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\newcommand{\done}{%
+    \rlap{$\square$}{\raisebox{2pt}{\large\hspace{1pt}\cmark}}%
+    \hspace{-2.5pt}}
+
+\subsection*{Deliverables checklist}
+
+\begin{todolist}
+    \item Project report
+    \item[\done]
+        Github repository:\\
+        \url{https://github.com/morganwl/csci740-text-based-worlds}
+    \item Poster
+\end{todolist}
