@@ -1,5 +1,6 @@
 """Knowledge base for text-based game agents."""
 
+from collections import namedtuple
 from itertools import zip_longest
 import os
 import sqlite3
@@ -11,24 +12,34 @@ con = sqlite3.connect(':memory:')
 KB_SCHEMA = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'kb_schema.sql')
 
+Function = namedtuple('Function', ['predicate', 'arity', 'argument'])
+
 
 class KnowledgeBase:
     """Base knowledge base class."""
 
     # public API
     def tell(self, observation):
+        """Report observations to the knowledge base."""
         raise NotImplementedError()
 
     def ask_value(self, prop, *args):
+        """Ask the knowledge base for the value of a particular
+        sentence."""
         raise NotImplementedError()
 
     def ask_true(self, prop, *args):
+        """Ask the knowledge base if a sentence is True."""
         raise NotImplementedError()
 
     def path(self, location, destination):
+        """Returns the sequence of actions leading from the current
+        location to the desired location, if one exists."""
         raise NotImplementedError()
 
     def explore(self):
+        """Returns an action likely to yield information useful to the
+        knowledge base."""
         raise NotImplementedError()
 
     def update(self, model):
@@ -68,6 +79,8 @@ class SQL_KnowledgeBase(KnowledgeBase):
         self.connection = connection
         if self.is_blank():
             self.create_tables()
+        else:
+            self.load_functions()
 
     def tell(self, observation):
         """Assigns a property to a variable in the knowledge base.
@@ -90,17 +103,29 @@ class SQL_KnowledgeBase(KnowledgeBase):
         parser = RoverLogicParser()
         return self.entails_tree(parser.parse(sentence))
 
-    def entails_op(self, tree, cursor=None):
+    def load_functions(self):
+        """Loads all functions from the database into memory for easy
+        access."""
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT Name, Predicate, Arity, Argument FROM Functions ")
+        self.functions = {}
+        for row in cursor.fetchall():
+            self.functions[row[0]] = Function(row[1:])
+
+
+
+    def eval_op(self, tree, cursor=None):
         if isinstance(tree, (bool, type(None))):
             return tree
         if cursor is None:
             cursor = self.connection.cursor()
         operator = tree[0]
         if operator in ('&', '|', '!'):
-            return self.entails_bool(operator, tree[1], cursor)
+            return self.eval_bool(operator, tree[1], cursor)
         if tree[0] in ('->', ':'):
-            return self.entails_implication(operator, tree[1], cursor)
-        return self.fetch(operator, tree[1], cursor)
+            return self.eval_implication(operator, tree[1], cursor)
+        return self.eval_predicate(operator, tree[1], cursor)
 
     def entails_tree(self, sentence, cursor=None):
         """Given a sentence as a prefix syntax tree, returns True if
@@ -116,64 +141,88 @@ class SQL_KnowledgeBase(KnowledgeBase):
             return self.entails_bool(sentence, cursor)
         return self.fetch(sentence, cursor)
 
-    def entails_bool(self, sentence, cursor=None):
+    def eval_bool(self, operator, sentence, cursor=None):
         """Given a sentence known to have a boolean operator, return
         True if that sentence is entailed, False if that sentence is not
         entailed, and None if there is not enough information."""
         if cursor is None:
             cursor = self.connection.cursor()
-        operator = sentence[0]
-        for term in sentence[1:]:
+        for term in sentence:
             term = self.entails_tree(term, cursor)
-            if isinstance(term, str):
-                raise Exception('Poorly formed sentence.')
-            if operator == 'AND' and not term:
+            # if isinstance(term, str):
+            #     raise Exception('Poorly formed sentence.')
+            if operator == '&' and not term:
                 return False
-            if operator == 'OR' and term:
+            if operator == '|' and term:
                 return True
-            if operator == 'NOT':
+            if operator == '!':
                 return not term
-        return operator == 'AND'
+        return operator == '&'
 
-    def fetch(self, sentence, cursor):
-        """Given a sentence that is known to be either a Predicate or
-        Function query, return the value of that Predicate or
-        Function."""
-        if isinstance(sentence, str):
-            return sentence
+    # def eval_predicate(self, operator, sentence, cursor):
+    #     """Given a sentence that is known to be either a Predicate or
+    #     Function query, return the value of that Predicate or
+    #     Function."""
+    #     if isinstance(sentence, str):
+    #         return sentence
+    #     if cursor is None:
+    #         cursor = self.connection.cursor()
+    #     operator = sentence[0]
+    #     cursor.execute(
+    #         "SELECT Name FROM Functions WHERE Name = ?",
+    #         (operator,))
+    #     if cursor.fetchone() is not None:
+    #         return self.fetch_function(sentence, cursor)
+    #     return self.fetch_predicate(sentence, cursor)
+
+    def fetch_predicate(self, predicate, cursor=None):
+        """Queries the knowledge base for a predicate and returns its
+        attributes or None if it does not exist."""
         if cursor is None:
             cursor = self.connection.cursor()
-        operator = sentence[0]
-        cursor.execute(
-            "SELECT Name FROM Functions WHERE Name = ?",
-            (operator,))
-        if cursor.fetchone() is not None:
-            return self.fetch_function(sentence, cursor)
-        return self.fetch_predicate(sentence, cursor)
-
-    def fetch_predicate(self, sentence, cursor):
-        if cursor is None:
-            cursor = self.connection.cursor()
-        predicate = sentence[0]
-
-        # Return None if Predicate does not exist
-        result = cursor.execute(
+        return cursor.execute(
             ("SELECT Arity, Implicit FROM Predicates "
              "WHERE Name = ?"),
             (predicate,)).fetchone()
+
+    def fetch_property(self, predicate, params, arity, implicit,
+                       cursor=None):
+        """Queries the knowledge base for a property (predicate applied
+        to ground terms) and returns truth of that property or None if
+        it is not known."""
+        result = cursor.execute(
+            (f"SELECT Value FROM Properties_{arity} WHERE "
+             "Predicate = ? AND " + 
+             ' AND '.join([f'Arg{i} = ?' for i in range(arity)])),
+            params).fetchone()
         if result is None:
+            if implicit:
+                return False
             return None
-        arity, implicit = result
+        return bool(result[0])
+
+    # def fetch(self, query
+
+
+    def eval_predicate(self, predicate, sentence, cursor=None):
+        if cursor is None:
+            cursor = self.connection.cursor()
+
+        # Return None if Predicate does not exist
+        attributes = self.fetch_predicate(predicate)
+        if attributes is None:
+            return None
+        arity, implicit = attributes
 
         # Check arity
-        if arity != len(sentence) - 1:
+        if arity != len(sentence):
             msg = (f'Predicate {predicate} expected {arity} arguments '
-                   f'but got {len(sentence) - 1}')
+                   f'but got {len(sentence)}')
             raise Exception(msg)
 
         params = [predicate]
         for term in sentence[1:]:
-            term = self.fetch(term, cursor)
+            term = self.eval_term(term, cursor)
             if term is None and not implicit:
                 return None
             params.append(term)

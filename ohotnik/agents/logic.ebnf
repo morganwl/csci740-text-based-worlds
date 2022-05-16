@@ -21,6 +21,7 @@ atomicSentence =
 complexSentence =
     | @+:'!' @+:sentence
     | '(' @:'&'<{sentence}+ ')'
+    | '(' @:'|'<{sentence}+ ')'
     | @+:`->` '('@+:sentence '->' @+:sentence')'
     | @+:`:`  '('@+:sentence ':' @+:sentence')'
     | @+:`=`  '('@+:sentence '=' @+:sentence')'
