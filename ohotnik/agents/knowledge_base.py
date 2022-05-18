@@ -72,6 +72,11 @@ class LogicBase:
             self.store(o)
         self.forward_chain()
 
+    def path(self, goal):
+        """Returns a list of sub-goals and, if available, an action
+        leading towards the requested goal."""
+        return self.back_chain_or(goal, {}, [])
+
     def advance(self):
         """Advances the time state of the knowledge base."""
         self.models.append(Model())
@@ -166,12 +171,38 @@ class LogicBase:
             if not subs:
                 continue
             for sub in subs:
-                if not rule.consequent.eval(self, sub=sub):
-                    self.store(rule.conclusion(self, sub))
-                    change = True
-                change = True
+                conclusion = rule.conclusion(self, sub)
+                for literal in conclusion:
+                    if literal and not self.ask_literal(literal.name,
+                                                        literal.args,
+                                                        literal.value):
+                        self.store(literal)
+                        change = True
         if change:
             self.forward_chain()
+
+    def fetch_rules(self, goal):
+        """Returns all rules that could satisfy a goal."""
+        return [rule for rule in self.rules if unify(rule.consequent, goal)]
+
+    def back_chain_or(self, goal, substitution, actions):
+        for rule in self.fetch_rules(goal):
+            for sub in self.back_chain_and(rule.premise,
+                                           unify(rule.consequent,
+                                                 goal, substitution),
+                                           actions):
+                yield sub
+
+    def back_chain_and(self, goals, substitution, actions):
+        if substitution is False:
+            return
+        if len(goals) == 0:
+            yield substitution
+        first, rest = goals[0], goals[1:]
+        for sub in self.back_chain_or(first.substitute(self, substitution),
+                                      substitution):
+            for sub_prime in self.back_chain_and(rest, sub):
+                yield sub_prime
 
 
 class Model:
@@ -199,14 +230,12 @@ class Model:
             matches = set()
         if isinstance(sentence, Predicate):
             for literal, v in self.predicates[sentence.name].items():
-                if literal in matches:
+                if literal in matches or v != sentence.value:
                     continue
                 substitution = unify(sentence,
                                      Predicate(sentence.name,
                                                literal))
                 if substitution is not False:
-                    if v != sentence.value:
-                        return False
                     substitutions.append(substitution)
                     matches.add(literal)
             return substitutions, matches

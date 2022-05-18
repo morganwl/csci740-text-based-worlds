@@ -30,12 +30,12 @@ def parse_args():
     return vars(parser.parse_args())
 
 
-def main(game, agent, move_limit=100, quiet=False, pause=.0):
+def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234):
     """Runs a single agent through a single game."""
     infos = EnvInfos(location=True, description=True)
     env = start(game, infos=infos)
     game_state = env.reset()
-    agent = agent()
+    agent = agent(seed=seed)
     reward, done = 0, False
     sleep(pause)
     moves = 0

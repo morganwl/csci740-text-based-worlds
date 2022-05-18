@@ -15,6 +15,13 @@ class LogicPart:
     def name(self):
         return self.operator
 
+    def __repr__(self):
+        if hasattr(self, 'args'):
+            args = self.args
+        else:
+            args = []
+        return f'[{self.operator}, {", ".join(str(arg) for arg in args)}]'
+
 
 class AndClause(LogicPart):
 
@@ -40,6 +47,10 @@ class AndClause(LogicPart):
             substitutions = new_subs
         return substitutions
 
+    @property
+    def args(self):
+        return self.clauses
+
 
 class Implication(LogicPart):
     """An implication node."""
@@ -63,7 +74,7 @@ class Implication(LogicPart):
         return False
 
     def conclusion(self, kb, sub):
-        return self.consequent.substitute(kb, sub=sub)
+        return [self.consequent.substitute(kb, sub=sub)]
 
     @property
     def args(self):
@@ -73,18 +84,49 @@ class Implication(LogicPart):
 class LinearImplication(LogicPart):
     """A linear implication is an implicaion where the truth of the
     premise in the prior node implies changes in the posterior node."""
+    
+    def __init__(self, premise, consequent, time=0):
+        self.operator = ':'
+        premise.time = time - 1
+        self.premise = premise
+        self.consequent = consequent
+        self.time = time
+
+    def eval(self, kb, time=0):
+        time += self.time
+        consequent = self.consequent.eval(kb, time)
+        if consequent:
+            return True
+        premise = self.premise.eval(kb, time)
+        if premise is False:
+            return True
+        if consequent is None or premise is None:
+            return None
+        return False
+
+    def conclusion(self, kb, sub):
+        conclusion = [self.consequent.substitute(kb, sub=sub)]
+        for atom in self.premise.args:
+            if not atom.carry:
+                conclusion.append(atom.substitute(kb, sub=sub, value=False))
+        return conclusion
+
+    @property
+    def args(self):
+        return (self.premise, self.consequent,)
 
 
 class Predicate(LogicPart):
     """Predicate node."""
 
-    def __init__(self, name, args, value=True, time=None):
+    def __init__(self, name, args, value=True, time=None, carry=False):
         self.operator = name
         self.args = tuple(args)
         self.value = value
         self.time = time
+        self.carry = carry
 
-    def substitute(self, kb, time, sub=None):
+    def substitute(self, kb, time=None, sub=None, value=True):
         if self.time is not None:
             time = self.time
         if sub is None:
@@ -98,7 +140,7 @@ class Predicate(LogicPart):
             if arg in sub:
                 arg = sub[arg]
             args.append(arg)
-        return type(self)(self.name, args, self.value, time)
+        return type(self)(self.name, args, self.value and value, time)
 
     def eval(self, kb, time=None, sub=None):
         """Evaluates the truth of the predicate given a knowledge

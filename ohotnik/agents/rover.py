@@ -241,7 +241,7 @@ class RoverKnowledge:
 class RoverOne:
     """Simple roving agent."""
 
-    def __init__(self):
+    def __init__(self, seed=None):
         self.know_surroundings = False
         self.location = None
         self.loc_description = ''
