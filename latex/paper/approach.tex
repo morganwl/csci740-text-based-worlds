@@ -1,1 +1,49 @@
 \section{Approach}
+
+Because I am interested in processes that are interpretable, I chose to
+focus on a knowledge-driven approach to solving text-based games. To
+facilitate decision-making, I chose to use a combination of logical
+reasoning and forward search. This makes the reasoning of the agent as
+transparent as possible, allowing me to see what it is learning, what
+conclusions it is making, and why it is making them.
+
+\subsection{Core components}
+
+In my approach, the agent can be seen as consisting of three fundamental
+components. The \emph{Parser}, which interprets descriptions and
+feedback from the game, the \emph{Knowledge Base}, which stores
+observations made by the Parser and attempts to infer additional
+knowledge, and the \emph{Decision Maker}, which uses information stored
+in the Knowledge Base to find paths to goals and issue commands to the
+game. In practice, the Decision Maker and the Knowledge Base are tightly
+interwoven.
+
+\begin{wrapfigure}{R}{.45\textwidth}
+    \raggedright
+    \texttt{
+        >go west\\
+        Forest\\
+        This is a forest, with trees in all directions. To the east,
+    there appears to be sunlight.}
+
+    \caption{\small Game text from \game{Zork I}. The room
+    name is on its own line, with no period. The word \emph{east} is
+recognized by the agent as a potential exit.}
+\end{wrapfigure}
+
+The Parser needs to be able to receive text from the game and extract
+from that new information about the game state, as well as information
+about the outcome of actions. Because all game text is in the form of
+natural language prose, this is not a simple process. This is a natural
+problem for Natural Language Processing algorithms, but, because the
+focus of this paper is on knowledge representation and inference, I
+chose a simple keyword parser that extracts known object words from a
+pre-determined list, using pre-determined information about those
+objects to generate observations. For instance, a collection of
+direction words can be represented as, \texttt{['north', 'south',
+'east', \ldots,]}. Because my Parser was designed for movement only, I
+was able to use a simple heuristic for recognizing a change in the game
+state: after moving, the game prints a new room description, which
+generally takes a recognizable form.
+
+The Knowledge Base was my primary area of interest.

@@ -27,10 +27,11 @@ def parse_args():
                                              'zork1.z5'))
     parser.add_argument('agent', nargs='?',
                         default=RoverOne)
+    parser.add_argument('--verbose', '-v', action='store_true')
     return vars(parser.parse_args())
 
 
-def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234):
+def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234, verbose=False):
     """Runs a single agent through a single game."""
     infos = EnvInfos(location=True, description=True)
     env = start(game, infos=infos)
@@ -46,8 +47,9 @@ def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234):
         command = agent.act(game_state, reward, done)
         if not quiet:
             # print(game_state)
-            for key, item in agent.debug_info().items():
-                print('', key, ':', item)
+            if verbose:
+                for key, item in agent.debug_info().items():
+                    print('', key, ':', item)
             input()
             print('>', command)
         game_state, reward, done = env.step(command)

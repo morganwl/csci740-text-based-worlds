@@ -1,0 +1,62 @@
+\section{Challenges}
+
+\begin{frame}
+    \frametitle{Challenges: Problems of text-based games}
+
+        \begin{itemize}
+            \item Recognizing action acceptance and rejection from
+                game description
+            \item Object identification and distinction --- some objects
+                have the same name but are not the same object.
+                Sometimes the name of an object will change.
+        \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Challenges: Implementation of logical agent}
+    \begin{itemize}
+        \item Working with TextWorld's GameGenerator tool
+        \item Choosing the right logic
+        \item Logic-based agents require a lot of internal functionality
+            before any reasoning can be performed
+        \item Finding the best way to represent time in the KB
+        \item Back-chaining is not sound for Linear Logic
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Unfinished Goals}
+
+    \begin{block}{Logic-based agent}
+        \begin{itemize}
+            \item While I almost finished the logic-based KB for Rover
+                Two, I wasn't able to deploy it
+            \item Did not implement equality, leaving problem of object
+                identification unsolved
+        \end{itemize}
+    \end{block}
+
+    \begin{block}{Generalize observations}
+        \begin{itemize}
+            \item Did not extend my rules to cover reasoning beyond
+                location and movement, (i.e. object interaction)
+            \item Did not add mechanism for creating new rules from
+                observations
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Future steps}
+
+    \begin{itemize}
+        \item Look at Bayes nets, or some other method of measuring
+            uncertainty
+        \item Incorporate word embeddings for better parsing and
+            guessing object types
+        \item Guess actions based on word embeddings and learn
+            associated rules
+    \end{itemize}
+\end{frame}

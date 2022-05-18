@@ -1,0 +1,117 @@
+\section{Experiments and Evaluation}
+
+\subsection{Designing the Rover Agents}
+
+\begin{frame}
+    \centering
+    \usebeamerfont{subsection title}
+    \insertsubsectionhead
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover One: A simple knowledge agent}
+
+    \begin{block}{Parser}
+        \begin{itemize}
+            \item Simple heuristic to distinguish action rejection from
+                acceptance
+            \item Uses pre-defined keywords to match objects in
+                descriptions
+            \item Tell KB about objects observed and when state has
+                changed
+            \item Only recognizes locations and directions
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover One: A simple knowledge agent}
+
+    \begin{block}{Knowledge Base}
+        \begin{itemize}
+            \item Predicates indexed as a dictionary of objects
+                containing a dictionary of predicates (sometimes
+                containing more dictionaries)
+            \item Inference performed by hand-coded rules around certain
+                predicates (not formal logic)
+            \item Exploration looks for exits without known destinations
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover One: A simple knowledge agent}
+
+    \begin{block}{Decision Maker}
+        \begin{itemize}
+            \item Depth-limited DFS to find paths to goal
+            \item If no path to goal exists, query KB for an exploration
+                goal
+            \item If no exploration goal exists, add all unknown
+                directions to exploration queue
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover One: A simple knowledge agent}
+
+    \begin{block}{Successes}
+        \begin{itemize}
+            \item Successively navigated text-based environments
+            \item Outperformed random agent in trivial mazes
+        \end{itemize}
+    \end{block}
+
+    \begin{block}{Failures}
+        \begin{itemize}
+            \item Unable to recognize distinct locations with the same
+                name
+            \item No object interaction
+            \item Fixed keyword set
+            \item Difficult to expand capabilities
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover Two: A complete logical agent}
+
+    \begin{block}{New formal Knowledge Base}
+        \begin{itemize}
+            \item Predicates stored as tuples, indexed on predicate name
+            \item Time modeled using layered sparse predicate databases
+            \item Could add rules using logical structure
+            \item Forward chaining algorithm for making inferences
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Rover Two: A complete logical agent}
+
+    \begin{block}{Successes}
+        \begin{itemize}
+            \item Fully functional entailment with 'AND', 'NOT',
+                'IMPLICATION' and 'LINEAR IMPLICATION' operators
+            \item Capable of reasoning with completely generalized
+                predicates and rules
+            \item Passes all unit tests
+        \end{itemize}
+    \end{block}
+
+    \begin{block}{Failures}
+        \begin{itemize}
+            \item Non-functional agent
+            \item No goal-seeking algorithm
+            \item Extremely time-consuming to code
+            \item Current implementation will probably perform poorly
+                with a large knowledge base
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+

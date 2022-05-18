@@ -1,0 +1,83 @@
+\documentclass{beamer}
+
+\makeatletter
+\def\input@path{%
+    {../components/}%
+}%
+\makeatother
+
+\input{theme_presets}
+
+\usepackage{cmll}
+\usepackage{multirow}
+\usepackage{booktabs}
+
+\usepackage[style=authoryear]{biblatex}
+\addbibresource{../text-based-worlds.bib}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\AtEveryBibitem{
+    \clearlist{language}
+    \clearfield{month}
+    \clearfield{series}
+    \clearfield{venue}
+    \clearname{editor}
+    \clearlist{publisher}
+    \clearlist{location} % alias to field 'address'
+    \clearfield{doi}
+    \clearfield{url}
+    \clearfield{venue}
+    \clearfield{issn}
+    \clearfield{isbn}
+    \clearfield{urldate}
+    \clearfield{urlyear}
+    \clearfield{urlmonth}
+    \clearfield{urlday}
+    \clearfield{eventdate}
+    \clearfield{pages}
+    %\clearfield{booktitle}
+    %\clearfield{journaltitle}
+    %\clearfield{number}
+    %\clearfield{volume}
+}
+
+\usepackage{caption}
+
+\usepackage{hyperref}
+\hypersetup{
+    pdfpagemode=FullScreen,
+}
+
+\title{Knowledge-based Solutions to Text-based Worlds}
+\subtitle{Final Presentation}
+\author{Morgan Wajda-Levie}
+\date{May 18, 2022}
+
+\newcommand{\game}[1]{\emph{#1}}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+
+% Problem description and goals
+\input{description}
+% State of the art / related work
+\input{related}
+% Approach
+\input{approach}
+% Experiments and Evaluation
+\input{experiments}
+% Discussion of results
+\input{results}
+% Lessons learned
+\input{lessons}
+% Challenges
+\input{challenges}
+% Bibliography
+\input{bibliography}
+
+
+\end{document}

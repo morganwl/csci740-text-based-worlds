@@ -1,0 +1,122 @@
+\section{Approach}
+
+\begin{frame}
+    \frametitle{Approach}
+    \framesubtitle{Components}
+
+    \small
+
+    \begin{block}{Parser}
+        Read text feedback from game.
+
+        Distinguish command acceptance from command
+        rejection.
+
+        Extract observations and \emph{tell} them to
+        Knowledge Base.
+
+        \textbf{Natural Language Processing}
+    \end{block}
+
+    \begin{block}{Knowledge Base}
+        Attempt to infer new facts from observations.
+
+        Distinguish known from unknown.
+
+
+        Provide exploration goals.
+
+        \textbf{Logical reasoning with forward chaining}
+    \end{block}
+
+    \begin{block}{Decision Maker}
+        Prioritize goals.
+
+        Find paths to goal states.
+
+        Generate commands.
+
+        \textbf{Depth-based search}
+    \end{block}
+
+    % \begin{block}{NLP-assisted groupings in hierarchical knowledge
+    %     base}
+    %     \begin{itemize}
+    %         \item Crude parsing of scene descriptions using word
+    %             embeddings
+    %         \item Use knowledge base to encode observations of objects
+    %             in rooms
+    %         \item Using word embeddings, navigate a hierarchical
+    %             knowledge base tying observations of verbs applied to
+    %             objects to look for matches
+    %         \item Exploit strong matches or continue exploration
+    %     \end{itemize}
+    % \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Linear first-order logic}
+    \framesubtitle{The underpinnings of the Knowledge Base}
+
+    \begin{itemize}
+        \item An extension of first-order logic where \emph{linear
+            implication} rules \emph{consume} (i.e. negate) the
+            conditions in the premise as well as asserting the
+            consequent.
+
+        \item Linear implication allows \emph{actions} to change the
+            state of facts in the knowledge base.
+
+        \item Facts are stored as predicates on \emph{constants} (i.e.
+            objects).
+    \end{itemize}
+
+    \begin{figure}
+        {\tiny
+            \[
+                go(DIR) :: at(player, L) \otimes
+                \$ connects(L, DIR, DEST) \otimes
+                \lnot \$ blocked(L, DEST)
+                \multimap at(player, DEST) 
+            \]
+        }
+        \caption*{Linear implication rule for travelling between rooms}
+    \end{figure}
+
+    \parencite{cote_textworld_2019}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Forward chaining}
+    \framesubtitle{Inference with first-order logic}
+
+    Whenever new facts are \emph{told} to the knowledge base, these
+    facts might imply additional facts.
+
+    \begin{enumerate}
+        \item Iterate over known rules
+            \begin{enumerate}
+                \item Find all substitutions for the premise that are
+                    entailed
+                \item For each valid substitution, see if the consequent
+                    unifies with a fact in the database
+                \item If not, store the consequent and mark
+                    \emph{changed}
+            \end{enumerate}
+        \item If \emph{changed} is True, return to 1
+    \end{enumerate}
+
+    \begin{figure}
+        \emph{Unification} is the algorithm by which variable substitutions
+        are found which make two logical sentences equal.
+
+        \begin{gather*}
+            connects(L, DIR, DEST) = connects(kitchen, west, hallway) \\
+            \text{where } \lbrace{L: kitchen, DIR: west, DEST:
+            hallway\rbrace}
+        \end{gather*}
+    \end{figure}
+\end{frame}
+
