@@ -86,22 +86,20 @@ class TestLogicBase(unittest.TestCase):
         self.kb.tell([
             Predicate('at', ['player', 'living room']),
         ])
-        self.kb.advance()
+        self.kb.advance(('go', 'south',))
         self.kb.tell([
-            Predicate('action', ['action_obj']),
-            Predicate('action_obj', ['go', 'south']),
             Predicate('at', ['player', 'dining room']),
             Predicate('at', ['player', 'living room'], False),
         ])
-        action_predicate = Predicate('action_obj', ['go', 'DIRECTION'])
-        at_predicate = Predicate(
+        now_predicate = Predicate('at', ['player', 'LOCATION'])
+        then_predicate = Predicate(
             'at', ['player', FunctionNode('location',
                                           ['player'],
                                           time=-1)],
             False)
-        self.assertTrue(action_predicate.eval(self.kb))
-        self.assertTrue(at_predicate.eval(self.kb))
-        premise = AndClause([action_predicate, at_predicate])
+        self.assertTrue(now_predicate.eval(self.kb))
+        self.assertTrue(then_predicate.eval(self.kb))
+        premise = AndClause([now_predicate, then_predicate])
         self.assertTrue(premise.eval(self.kb))
 
     def test_fetch_and(self):
@@ -126,31 +124,21 @@ class TestLogicBase(unittest.TestCase):
                           {'L': 'bedroom', 'C': 'chest'}])
     
     def test_forward_chain(self):
-        self.kb.add_rule(
+        self.kb.add_implication(
             Implication(
-                AndClause([
-                    Predicate('action_obj', ['go', 'DIRECTION']),
-                    Predicate('at', ['player', FunctionNode('location',
-                                                            'player',
-                                                            time=-1)],
-                              False)]),
-                Predicate('connects', [FunctionNode('location',
-                                                    ['player'],
-                                                    )])))
+                Predicate('connect', ['LOCATION', 'DIRECTION',
+                                      'DESTINATION']),
+                Predicate('exit', ['LOCATION', 'DIRECTION'])))
         self.kb.tell([
             Predicate('at', ['player', 'living room']),
         ])
-        self.kb.advance()
+        self.kb.advance(('go', 'south',))
         self.kb.tell([
-            Predicate('action', ['action_obj']),
-            Predicate('action_obj', ['go', 'south']),
-            Predicate('at', ['player', 'dining room']),
-            Predicate('at', ['player', 'living room'], False),
-        ])
+            Predicate('connects', ['living room', 'south',
+                                   'dining room']),])
         self.assertTrue(
-            Predicate('connects', ['living room',
-                                   'dining room',
-                                   'south']))
+            Predicate('exit', ['living room',
+                                   'south',]))
 
     def test_linear_implication(self):
         """Confirms that linear implication evaluates correctly."""
@@ -161,17 +149,14 @@ class TestLogicBase(unittest.TestCase):
                                    'south',
                                    'dining room']),
         ])
-        self.kb.advance()
+        self.kb.advance(('go', 'south',))
         self.kb.tell([
-            Predicate('action', ['action_obj']),
-            Predicate('action_obj', ['go', 'south']),
             Predicate('at', ['player', 'dining room']),
             Predicate('at', ['player', 'living room'], False),
         ])
-        implication = LinearImplication(
+        rule = LinearImplication(
+            ('go', 'DIRECTION',),
             AndClause([
-                Predicate('action', ['action_obj'], time=1),
-                Predicate('action_obj', ['go', 'DIRECTION'], time=1),
                 Predicate('exit', [FunctionNode('location',
                                                 ['player']),
                                    'DIRECTION'], carry=True),
@@ -181,8 +166,8 @@ class TestLogicBase(unittest.TestCase):
                                        'DESTINATION'],
                           carry=True)]),
             Predicate('at', ['player', 'DESTINATION']))
-        self.assertTrue(implication.premise.eval(self.kb))
-        self.kb.add_rule(implication)
+        self.assertTrue(rule.premise.eval(self.kb))
+        self.kb.add_rule(rule)
         # import pdb
         # pdb.set_trace()
         self.kb.forward_chain()

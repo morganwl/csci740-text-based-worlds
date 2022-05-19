@@ -26,7 +26,7 @@ def unify(x, y, substitution=None):
     if isvar(x):
         return unify_var(x, y, substitution)
     if isvar(y):
-        return unify_var(x, y, substitution)
+        return unify_var(y, x, substitution)
     if isinstance(x, LogicPart) and isinstance(y, LogicPart):
         return unify(x.args, y.args,
                      unify(x.operator,
@@ -59,6 +59,7 @@ class LogicBase:
     def __init__(self, max_models=5):
         """Initialize the logic base."""
         self.models = [Model()]
+        self.implications = []
         self.rules = []
         self.functions = {}
         self.constants = set()
@@ -67,19 +68,24 @@ class LogicBase:
     def tell(self, observations):
         """Report observations to the knowledge base."""
         for o in observations:
-            if isinstance(o, tuple):
+            if isinstance(o, (tuple, list)):
                 o = Predicate(*o)
             self.store(o)
         self.forward_chain()
+        self.occams_razor()
 
     def path(self, goal):
         """Returns a list of sub-goals and, if available, an action
         leading towards the requested goal."""
-        return self.back_chain_or(goal, {}, [])
+        return None
 
-    def advance(self):
-        """Advances the time state of the knowledge base."""
-        self.models.append(Model())
+    def explore(self):
+        return None, None
+
+    def advance(self, action):
+        """Advances the time state of the knowledge base and updates the
+        action predicate."""
+        self.models.append(Model(action=action))
         while len(self.models) > self.max_models:
             self.models[0].merge(self.models.pop(1))
 
@@ -162,16 +168,19 @@ class LogicBase:
         """Add a rule to the knowledge base."""
         self.rules.append(rule)
 
-    def forward_chain(self):
+    def add_implication(self, implication):
+        self.implications.append(implication)
+
+    def forward_chain(self, goal=None):
         """If a rule is entailed by the knowledge base, adds any
         additional knowledge to the knowledge base and repeats."""
         change = False
-        for rule in self.rules:
-            subs = rule.premise.eval(self)
+        for imp in self.implications:
+            subs = imp.premise.eval(self)
             if not subs:
                 continue
             for sub in subs:
-                conclusion = rule.conclusion(self, sub)
+                conclusion = imp.conclusion(self, sub)
                 for literal in conclusion:
                     if literal and not self.ask_literal(literal.name,
                                                         literal.args,
@@ -181,34 +190,78 @@ class LogicBase:
         if change:
             self.forward_chain()
 
+    def occams_razor(self):
+        """Based on observed changes to the state and the current
+        action, finds the action rule which would *could* be entailed by
+        the knowledge base with the least number of new predicates. Will
+        not negate existing predicates. THIS YIELDS AN ASSUMPTION AND
+        INFERRENCES MADE ARE NOT SOUND."""
+        changed = []
+        for predicate in self.models[-1]:
+            if not predicate.eval(self, time=-1):
+                changed.append(predicate)
+        for predicate in changed:
+            simplest_count = 2**7
+            simplest_rule = None
+            for rule in self.rules:
+                sub = unify(AndClause([self.action, predicate]),
+                            AndClause([rule.action, rule.consequent]))
+                count = 0
+                predicates = []
+                if sub and predicate.value == rule.consequent.value:
+                    for clause in rule.premise.args:
+                        new_clause = clause.substitute(self, time=-1,
+                                                       sub=sub)
+                        r = self.fetch(new_clause)
+                        if r:
+                            for s in r:
+                                sub.update(s)
+                        else:
+                            r = self.ask_literal(
+                                new_clause.name,
+                                new_clause.args,
+                                new_clause.value,
+                                time=-1)
+                            if r is False:
+                                count = -1
+                                break
+                            if r is None:
+                                count += 1
+                                predicates.append(new_clause)
+                    if count >= 0 and count < simplest_count:
+                        simplest_count = count
+                        simplest_rule = (rule, sub, predicates)
+            if simplest_rule:
+                rule, sub, predicates = simplest_rule
+                conclusion = rule.conclusion(self, sub)
+                for literal in predicates:
+                    self.store(literal)
+                for literal in conclusion:
+                    self.store(literal)
+
     def fetch_rules(self, goal):
         """Returns all rules that could satisfy a goal."""
         return [rule for rule in self.rules if unify(rule.consequent, goal)]
+                
+    @property
+    def action(self):
+        return self.models[-1].action
 
-    def back_chain_or(self, goal, substitution, actions):
-        for rule in self.fetch_rules(goal):
-            for sub in self.back_chain_and(rule.premise,
-                                           unify(rule.consequent,
-                                                 goal, substitution),
-                                           actions):
-                yield sub
-
-    def back_chain_and(self, goals, substitution, actions):
-        if substitution is False:
-            return
-        if len(goals) == 0:
-            yield substitution
-        first, rest = goals[0], goals[1:]
-        for sub in self.back_chain_or(first.substitute(self, substitution),
-                                      substitution):
-            for sub_prime in self.back_chain_and(rest, sub):
-                yield sub_prime
+    @property
+    def predicates(self):
+        temp_model = Model()
+        for model in self.models:
+            temp_model.merge(model)
+        return temp_model.predicates
 
 
 class Model:
     """A model of ground truths."""
-    def __init__(self, initial=None):
+    def __init__(self, action=None, initial=None):
         self.predicates = defaultdict(dict)
+        if action is None:
+            action = tuple()
+        self.action = action
         if initial is not None:
             self.predicates.update(initial)
 
@@ -242,56 +295,9 @@ class Model:
 
     def merge(self, other):
         for predicate in other.predicates:
-            self.predicates[predicate].update(other.predicates)
+            self.predicates[predicate].update(other.predicates[predicate])
 
-
-if __name__ == '__main__':
-    kb = LogicBase()
-
-    kb.add_function('location', 'at', 1)
-    kb.add_function('destination', 'connects', 2)
-    kb.add_function('last_action', 'action', 1)
-    kb.add_function('action_obj_1', 'action_obj', 1)
-
-    rules = [
-        Implication(
-            AndClause([
-                Predicate('action_obj', ['go', 'south']),
-                Predicate('at', ['player', FunctionNode('location',
-                                                        ['player'],
-                                                        time=-1)],
-                          False)]),
-            Predicate('connects', [FunctionNode('location', ['player'],
-                                                time=-1),
-                                   'south',
-                                   FunctionNode('location', ['player'],
-                                                )])
-        )
-    ]
-
-    for rule in rules:
-        kb.add_rule(rule)
-
-    kb.tell([Predicate('room', ['living room']),
-             Predicate('exit', ['living room', 'south']),
-             Predicate('at', ['player', 'living room']),
-             ])
-
-    kb.advance()
-    print(kb.entails(
-        Predicate('exit', [FunctionNode('location', ['player']), 'south'])))
-
-    kb.tell([Predicate('action', ['action_obj']),
-             Predicate('action_obj', ['go', 'south']),
-             Predicate('at', ['player', 'dining room']),
-             Predicate('at', ['player', 'living room'], False),
-             ])
-
-    print(kb.entails
-          (Predicate('exit', ['living room', 'south'])))
-    print(kb.entails
-          (Predicate('exit', ['living room', 'north'])))
-    print(kb.entails(
-        Predicate('connects', ['living room', 'south', 'dining room'])))
-    print(kb.entails(
-        Predicate('exit', [FunctionNode('location', ['player']), 'south'])))
+    def __iter__(self):
+        for predicate, values in self.predicates.items():
+            for args, value in values.items():
+                yield Predicate(predicate, args, value)

@@ -7,7 +7,7 @@ import os
 from time import sleep
 
 from textworld import start, EnvInfos
-from ohotnik.agents import RoverOne
+from ohotnik.agents import RoverOne, RoverTwo
 from textworld.agents import NaiveAgent
 
 
@@ -26,7 +26,7 @@ def parse_args():
                         default=os.path.join(root_dir, 'games',
                                              'zork1.z5'))
     parser.add_argument('agent', nargs='?',
-                        default=RoverOne)
+                        default=RoverTwo)
     parser.add_argument('--verbose', '-v', action='store_true')
     return vars(parser.parse_args())
 

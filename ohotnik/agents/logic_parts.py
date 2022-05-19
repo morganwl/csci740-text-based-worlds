@@ -85,14 +85,17 @@ class LinearImplication(LogicPart):
     """A linear implication is an implicaion where the truth of the
     premise in the prior node implies changes in the posterior node."""
     
-    def __init__(self, premise, consequent, time=0):
+    def __init__(self, action, premise, consequent, time=0):
         self.operator = ':'
         premise.time = time - 1
+        self.action = action
         self.premise = premise
         self.consequent = consequent
         self.time = time
 
     def eval(self, kb, time=0):
+        """Returns True using implication logic."""
+        # TO-DO: Need to rethink the point of this method.
         time += self.time
         consequent = self.consequent.eval(kb, time)
         if consequent:
