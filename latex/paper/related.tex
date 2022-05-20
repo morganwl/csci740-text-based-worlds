@@ -1,5 +1,21 @@
 \section{Related work}
 
+\subsection{Frameworks for text-based games}
+
+The excellent TextWorld paper lays out a formalization of text-based
+games as Partially Observable Markov Decision Processes. The challenges
+of text-based games in this context are explored, such as partial
+observability, large state space, large and sparse action space,
+exploration vs exploitation and long-term credit assignment. The
+challenge of common sense reasoning and \emph{affordance extraction}, or
+knowing which verbs are applicable to which objects, is explored.
+
+The TextWorld framework aids in the study of text-based games by
+providing a Python interface for connecting AI agents to any text-based
+game published in the popular Z-machine format, and also provides tools
+for procedurally generating text-based games with various constraints
+and criteria\cite{cote_textworld_2019}.
+
 \subsection{Agents for playing text-based games}
 
 Many AI agents have been written to attempt text-based games, some of
@@ -16,36 +32,35 @@ NAIL\cite{hausknecht_nail_2019}. This source code, along with published
 work, provides some interesting approaches, and also elucidates some of
 the thorny sub-problems that researchers are attempting to solve.
 
-One particular challenge is identifying which verbs can be applied to
-which objects, called \emph{affordance extraction}. \agent{BYUAgent
-2016} uses word2vec word embeddings to create an \emph{affordance
-vector} between objects extracted from game text and a pre-defined list
-of verbs. Commands are generated from the most promising
-verbs.\cite{atkinson_text-based_2019}
+NAIL, the winner of the 2018 competition, combines many components and a
+number of specialized heuristics for text-based games. A 5-gram language
+model is used to estimate probable affordance extractions. Information
+about locations in the game, and all objects in it, is stored in a
+knowledge graph, but not before being confirmed as \emph{valid} by a
+custom validity detector. Room identity is determined with a fuzzy
+string match. Decisions are made by a number of specialized decision
+modules which take control of the agent based on their eagerness under
+the current game state\cite{hausknecht_nail_2019}.
+
+\agent{BYUAgent 2016} uses word2vec word embeddings to create an
+\emph{affordance vector} between objects extracted from game text and a
+pre-defined list of verbs. Commands are generated from the most
+promising verbs.\cite{atkinson_text-based_2019}
+
 \agent{Golovin} learns command patterns by studying a collection of
 published game solutions (called \emph{walkthroughs}), tutorials and
 decompiled source code, and then uses a combination of LTSM neural
 networks trained on fantasy novels and a word2vec embedding to match
 those commands with objects extracted from scene
-descriptions.\cite{kostka2017text}
-\agent{NAIL} uses a 5-gram language model to estimate probable
-affordance between extracted objects and a hand-curated list of 561
-verbs mostly likely to occur in text-based
-games.\cite{hausknecht_nail_2019}
+descriptions. Locations are mapped using a simple room-direction graph.
+A MergNode algorithm is performed after every movement to merge nodes
+with identical pathways\cite{kostka2017text}.
 
-Another challenge facing agents is building information about the
-environment as it is explored, especially creating a map of locations
-and pathways between them. Mapping, on its surface, seems simple enough
---- rooms are almost always reached by traveling in cardinal directions,
-and these exits are usually (though not always) included in scene
-descriptions. Unfortunately, multiple locations might bear the same
-name, and the descriptions for locations can change over
-time. \agent{Golovin} uses a heuristic for
-identifying rooms and builds a simple room-direction graph. A MergeNode
-algorithm is performed after every movement to merge nodes with
-identical pathways to other nodes\cite{kostka2017text}. \agent{NAIL}
-builds a much more detailed knowledge graph that includes not only rooms
-and their exits, but also objects contained within those rooms. A fuzzy
-string match is used to establish room
-identity\cite{hausknecht_nail_2019}.
+Dambekodi et al have explored augmenting agents with the COMET inference
+model and the BERT large language model, showing, in both cases, that
+the statistical models encoded common sense which could be leveraged in
+affordance extraction\cite{dambekodi_playing_2020}.
 
+Haroush et al combined two deep learning algorithms to aid in action
+selection. One learns the likelihood of action acceptance, while the
+other learns a formal q-value.

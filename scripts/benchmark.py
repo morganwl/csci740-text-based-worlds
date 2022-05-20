@@ -24,7 +24,7 @@ DEFAULT_AGENTS = (NaiveAgent, RoverOne)
 DEFAULT_GAMES_DIR = os.path.join(get_root(), 'games')
 DEFAULT_GAMES = [game for game in os.listdir(DEFAULT_GAMES_DIR)
                  if os.path.splitext(game)[1] in ['.z5', '.z8']]
-DEFAULT_MOVE_LIMIT = 1000
+DEFAULT_MOVE_LIMIT = 100
 DEFAULT_PLAY_COUNT = 10
 
 def write_table(results, output):
@@ -54,7 +54,7 @@ def write_table(results, output):
                 fh.write(g)
             fh.write(f' & {s} & {m} & {l}')
             game = g
-        fh.write(r'\bottomrule')
+        fh.write(r'\\ \bottomrule')
         fh.write('\n')
         fh.write(r'\end{tabular}')
         fh.write('\n')

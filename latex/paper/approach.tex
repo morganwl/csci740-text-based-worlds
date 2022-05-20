@@ -1,49 +1,144 @@
 \section{Approach}
 
-Because I am interested in processes that are interpretable, I chose to
-focus on a knowledge-driven approach to solving text-based games. To
-facilitate decision-making, I chose to use a combination of logical
-reasoning and forward search. This makes the reasoning of the agent as
-transparent as possible, allowing me to see what it is learning, what
-conclusions it is making, and why it is making them.
+Much of the existing work in text-based games focuses on deep learning,
+combined with natural language processing, to aid in affordance
+extraction. Some of the most successful agents rely on heavily tuned
+heuristics specific to the \emph{genre} of text-based games as much as
+the format. Agents generally work in a reflexive fashion --- looking for
+objects in the game world and pushing them with whichever action comes
+to mind, in the hope that accepted commands on objects will yield
+desirable results.
+
+These are all valid approaches to an as-of-yet unsolvable problem, but I
+am interested in an approach that foregrounds interpretable common-sense
+reasoning, with the ability to not only recognize important objects and
+actions that change them, but ways in which those actions can be
+combined to reach explicit goals. For this reason, I chose to focus on a
+knowledge-driven approach, using a combination of logical reasoning and
+forward search to make inferences and decisions. This makes the
+reasoning of the agent as transparent as possible, allowing me to see
+what it is learning, what conclusions it is making, and why it is making
+them.
+
+\subsection{A logic-based agent}
+
+Why logic? First of all, knowledge, and logical inference upon it is a
+transparent and interpretable process, particularly when using First
+Order Logic with predicate names drawn from natural language
+vocabularies. Research has been done on using statistical methods such
+as reinforcement learning, neural networks and even large language
+models to shoulder the task of action affordance and common sense
+reasoning. While I am sure that these statistical methods must
+ultimately be incorporated, I am interested in seeing how much reasoning
+and intuition can be performed in a logical realm. Logical methods also
+have the benefit of learning from a much smaller number of observations,
+something that I consider meaningful when placed next to large language
+models which are trained on observations that would take several
+lifetimes for humans to evaluate.
+
+Logic also is also well-suited to some of the particular problems of
+text-based games. For instance, logic provides an excellent tool for solving
+the object identity problem --- establishing that two objects must be
+one and the same or, conversely, that two objects must be distinct is a
+form of logical inference. The puzzles in text-adventure games also tend
+to require novel combinations of common-sense reasoning which must be
+performed once before completing the puzzle and moving on to the next.
+Because we lack a statistically significant wealth of similar puzzles,
+an approach that does not rely on pattern-matching could be
+advantageous.
+
+Text-based games also present favorable conditions for logical reasoning
+that many other applications do not. Action outcomes are generally,
+though not universally, deterministic, allowing definite rules to be
+successfully employed in most cased. (The right key will always open the
+right lock, which cannot be said of the door to my apartment building.)
+Good games are also generally designed to behave in a logical fashion,
+even though that logic is rarely formalized and might not be immediately
+apparent to the player. Nonetheless, a logical agent in the environment of a
+text-based game will have advantages that they would not have in the
+real-world environment that that game is meant to model --- actions will
+almost always have a consistent outcome once the necessary conditions
+are met, and the information necessary to identify those conditions will
+almost always be provided.\footnotemark
+
+\footnotetext{There are games where action outcomes are
+    non-deterministic and games where the information necessary to solve
+    a puzzle is not provided. While some of these might be cases of
+    shoddy design, many puzzles do depend on upending conventional
+expectations. Solving these problems is a challenge for another day.}
+
+\subsection{Linear logic}
+
+In choosing an appropriate logic for our agent, the demands of human
+interpretability favor a variant of First-order logic, which allows us
+to define multiple predicates about a single \emph{constant} (or
+game-world object), and to make universal statements of the form:
+
+\[
+    \forall \text{L}, \text{DIR}, \text{DEST}\hskip.5em
+    connects(\text{L}, \text{DIR}, \text{DEST})
+    \to exit(\text{L}, \text{DIR})
+\]
+
+Meaning that any location connected by a direction to a destination
+implies the existence of an exit from that location in that direction.
+Words in uppercase letters are treated as variables, whereas predicates
+and constants are written in lowercase letters. To simplify computation,
+I only consider universally qualified variables, allowing me to omit the
+$\forall$ preamble. To maintain the completeness of the agent's
+reasoning, I remove constants, meaning that reasoning is limited to
+universally qualified variables and explicitly declared constants.
+The values of functions in sentences such as $exit(location(player),
+south)$ can be captured by adding a variable and a second conjunctive
+clause, such as $at(player, \text{LOCATION}) \land exit(\text{LOCATION},
+south)$.
+
+Because the environment changes in response to player actions, a logic
+is needed that can reason about predicates changing over time. I chose
+linear logic because of its use in TextWorld to guarantee the
+satisfiability of procedurally generated
+games\cite{cote_textworld_2019}. In my implementation of linear logic, I
+add the \emph{linear implication} operator, which behaves much like
+traditional implication, with the difference that the right-hand side,
+or \emph{consequent} of the implication does not become true until the
+following time state, and that some conditions on the left-hand side, or
+\emph{premise}, of the operator, are \emph{consumed}. Consider the
+following linear implication for traveling between rooms.
+
+\begin{gather*}
+    go(\text{DIR}) :: at(player, \text{L}) \otimes
+    \$ connects(\text{L}, \text{DIR}, \text{DEST}) \otimes
+    \lnot \$ blocked(\text{L}, \text{DEST}) \\
+    \multimap at(player, \text{DEST}) 
+\end{gather*}
+
+In this case, if the player action is, for instance, ``\texttt{go
+south}'', and an exit exists between the player's current location and
+some other destination, the player will be at that destination in the
+next turn. Furthermore, their current location will be consumed, which
+is to say, the predicate will be replaced with its complement in the
+knowledge base. The predicates \emph{exit} and \emph{connects} are
+marked with a $\$$ sign, meaning that their condition carries across the
+operator and is not consumed.
+
+Because I am primarily concerned with changes in the environment
+triggered by player actions, I have chosen to model the player action as
+a special predicate that is required for all linear implication rules.
+If I were to model games where player actions were not the only actors
+in changing the environment (such as games with non-player characters),
+I would change this.
+
+With a logically sound representation of the game environment, I can use
+a \emph{forward chaining} algorithm to infer additional information
+about the environment and, hopefully, solve challenges.
 
 \subsection{Core components}
 
 In my approach, the agent can be seen as consisting of three fundamental
-components. The \emph{Parser}, which interprets descriptions and
-feedback from the game, the \emph{Knowledge Base}, which stores
-observations made by the Parser and attempts to infer additional
-knowledge, and the \emph{Decision Maker}, which uses information stored
-in the Knowledge Base to find paths to goals and issue commands to the
-game. In practice, the Decision Maker and the Knowledge Base are tightly
+components. The \emph{parser}, which interprets descriptions and
+feedback from the game, the \emph{knowledge base}, which stores
+observations made by the parser and attempts to infer additional
+knowledge, and the \emph{decision maker}, which uses information stored
+in the knowledge base to find paths to goals and issue commands to the
+game. In practice, the decision maker and the knowledge base are tightly
 interwoven.
-
-\begin{wrapfigure}{R}{.45\textwidth}
-    \raggedright
-    \texttt{
-        >go west\\
-        Forest\\
-        This is a forest, with trees in all directions. To the east,
-    there appears to be sunlight.}
-
-    \caption{\small Game text from \game{Zork I}. The room
-    name is on its own line, with no period. The word \emph{east} is
-recognized by the agent as a potential exit.}
-\end{wrapfigure}
-
-The Parser needs to be able to receive text from the game and extract
-from that new information about the game state, as well as information
-about the outcome of actions. Because all game text is in the form of
-natural language prose, this is not a simple process. This is a natural
-problem for Natural Language Processing algorithms, but, because the
-focus of this paper is on knowledge representation and inference, I
-chose a simple keyword parser that extracts known object words from a
-pre-determined list, using pre-determined information about those
-objects to generate observations. For instance, a collection of
-direction words can be represented as, \texttt{['north', 'south',
-'east', \ldots,]}. Because my Parser was designed for movement only, I
-was able to use a simple heuristic for recognizing a change in the game
-state: after moving, the game prints a new room description, which
-generally takes a recognizable form.
-
-The Knowledge Base was my primary area of interest.

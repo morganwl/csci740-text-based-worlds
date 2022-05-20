@@ -1,1 +1,97 @@
 \section{Challenges and next steps}
+
+I encountered a number of challenges over the course of this project.
+Some, such as object identification, are described in more detail within
+the experiments section. Other challenges inherent to the domain of
+text-based games were ignored entirely, such as parsing natural language
+text. Text-based games are an unsolved problem; this makes the potential
+for discoveries exciting, but it also leads to the inevitability of
+disappointing results.
+
+I expected difficulties in applying logical methods to an AI agent, but
+I was not prepared for the challenges in simply implementing the
+back-end components necessary to make a logic-based agent function.
+Without functioning algorithms for unifying, fetching and evaluating
+logical sentences, no reasoning can be performed. Even once logical
+reasoning is implemented, this alone is not sufficient for decision
+making. This made it impossible to even connect the agent to the game
+until a significant amount of programming had been done.
+
+I also made some missteps in auxiliary problems of implementing a
+logical knowledge-base. Originally, I was concerned about the best data
+structures for storing predicates; because I was dealing with arbitrary
+predicates and multiple arguments, I did not want to create a tangled
+graph of interlocking object references. I was also wary of leaving
+predicates unstructured and unindexed in any meaningful way. I spent a
+day implementing the knowledge base using an SQL database backend,
+because I knew that I ultimately wanted to be able to store observations
+between games, and because I thought that database tools might allow me
+to avoid the problem of predicate storage and focus on logical
+reasoning. (My prior professional experience includes some work with
+writing tools that interacted with databases through SQL queries.)
+Unfortunately, this proved a distraction, as filtering the textbooks
+logic algorithms through SQL queries added unneeded complexity. I
+ultimately chose a crude data structure of two-dimensional dictionaries,
+indexed on predicate names and argument tuples. This might prove
+unwieldy over time as thousands of predicates are accumulated, but is
+not a problem for my current experiments.
+
+Frustrated with expressing logical sentences using nested lists, I found
+the Tatsu grammar parser, which creates Python parsers from EBNF
+grammars. This too proved a costly distraction, and, while the parser
+worked with an earlier version of Rover Two, it is not currently
+configured correctly to work with the current version.
+
+I had initially hoped to use backward chaining as a goal-seeking
+algorithm. I abandoned this when I realized that linear logic makes
+one-way back-chaining unsound --- premises are recursively found which
+prove the desired consequent, but, because linear implication results in
+state changes beyond its consequent, a sound back-chaining algorithm
+would need to move forwards and backwards to address the issue of
+resource consumption. I realized that a better and more sound approach
+would be constraint satisfaction using back-tracking search, but I had
+run out of time before I could implement it.
+
+Logic, as a tool in AI presents many challenges. Namely, that it deals
+with absolute truths, while AI agents are generally in environments with
+a great deal of uncertainty. I did not get a chance to wrestle with many
+of these challenges, but I am excited about the possibility of mixing
+logic and uncertainty. How does a logical agent resolve the
+contradictions caused by learning facts that force it to abandon
+observations it once accepted as truth? Text-based games provide many
+opportunities for this, both because of the imperfections of
+observations made through natural language processing, and because of
+the possibility of unreliable narration in the game text.
+
+I believe that there is untapped potential for logical approaches to
+text-based games and that these games, in turn, provide a meaningful
+environment for experimenting with logical reasoning in AI agents. There
+is no doubt that statistical methods and quantified uncertainty need to
+be incorporated for an agent to be truly successful, particularly in the
+parser component. The agent would also benefit from more finely tuned
+heuristics in the decision making component, even if those heuristics
+sometimes lead to actions that the knowledge base would deem
+inappropriate.
+
+If I were to continue work on this project, I would, for the time being
+keep the focus on creating a functional, if limited, purely logical
+decision-making agent. I would start by implementing constraint
+satisfaction algorithms, which would, hopefully, give me enough of a
+tool for directing exploration and problem-solving. Back-chaining could
+also be implemented, unsound though it may be, as a heuristic, though
+forward search should probably be more than adequate for Rover's current
+capabilities of perception.
+
+An interesting experiment might be taking a controlled set of games
+(including a test set and a validation set) and attempting to logically
+reason, at a higher level, through a complete solution of those games
+(with the help of published solutions) and then applying that
+information to designing rules for an agent to solve those games. What
+is the minimum number of rules required to solve a given text-based
+game? Hopefully not a single rule for each action in the published
+solution. Can rules be written that generalize between games?
+
+Ultimately, I am interested in developing an agent that is capable of
+learning new logical rules. This would require incorporating statistical
+methods and using natural language processing to help identify potential
+predicates. I would probably explore Bayesian networks.

@@ -1,3 +1,296 @@
 \section{Experiments}
 
-\section{Evaluation}
+\subsection{Rover One}
+
+I started with a very simple knowledge-based agent that would be able to
+navigate a trivial maze based on observing labeled exits in the room
+description. This allowed me to work out some of the fundamental
+problems of connecting my agent to a text-based game and identify some
+of the pitfalls needing more attention. I called this simple agent
+\emph{Rover One}. 
+
+\subsubsection{The Rover One parser}
+
+\begin{wrapfigure}{R}{.45\textwidth}
+    \raggedright
+    \texttt{
+        >go north\\
+        You can't go that way.\\
+        >hop like a madman\\
+        I only understood you as far as wanting to hop.\\
+        >traverse steps\\
+        That's not a verb I recognize.
+    }
+        \caption{\small Rejected commands in
+        \game{Curses}\cite{nelson_curses_1993}.}
+        \smallskip
+    \raggedright
+    \texttt{
+        >go west\\
+        Forest\\
+        This is a forest, with trees in all directions. To the east,
+    there appears to be sunlight.}
+
+    \caption{\small Response to a command in \game{Zork
+        I}\cite{blank_zork_1980}. The room
+    name is on its own line, with no period. The word \emph{east} is
+recognized by the agent as a potential exit.}
+\end{wrapfigure}
+
+Rover One's parser has two responsibilities. First, it needs to
+distinguish \emph{accepted commands}, which either return information
+or produce some sort of effect on the game environment, from
+\emph{rejected commands}, which produce no result either because they
+refer to actions not possible in the current state, or because they
+are not understood by the parser. This identification is aided by two
+heuristics. First of all, because Rover One's actions are limited to
+moving between locations, any successful action will result in a new
+player location. In almost all text-based games, a location change is
+announced by printing the new location's name in a recognizable format.
+Secondly, rejection messages are generally brief with commonly occurring
+keywords.
+
+Once a room description is recognized, the parser needs to extract
+phrases from that description that might refer to meaningful objects in
+the game. Again, this process is greatly simplified for Rover One,
+because it is only concerned with objects that allow it to move between
+rooms, an action generally performed by the command ``\texttt{go
+<direction>}.'' Using a list of pre-determined directions, Rover One is
+able to extract keywords from the scene description and convert those
+keywords to declarative observations in the form of
+$exit(\text{L}, \text{DIR})$ predicates. These observations are then
+passed on to the knowledge base via tell statements.
+
+The Rover One parser also performs a simple form of assumption
+correction --- when movement in a direction is rejected by the game, the
+parser reports an $\lnot exit(\text{L}, \text{DIR})$ observation to the
+knowledge base.
+
+\subsubsection{The Rover One knowledge base}
+
+Rover One's knowledge base receives observations from the parser via a
+tell statement, and stores predicates in an OBJECT $\rightarrow$
+PREDICATE $\rightarrow$ OTHER ARGUMENTS $\rightarrow$ VALUE hierarchy.
+As a further simplification (and departure from the original logical
+approach), destinations are stored explicitly as evaluated functions
+with the location object. (i.e. \texttt{objects\{room\}
+\{`destination'\}\{direction\}} contains the name of another room.)
+
+When queried, the knowledge base reports the known value of predicates,
+or that they are unknown. The knowledge base can be queried for a path
+to a goal, which it supplies by using an iterative deepening search to
+find a valid path. The knowledge base can be queried for an exploration
+goal, for which it uses iterative deepening search to find the closest
+$exit$ predicate without a matching $destination$ value.
+
+Rover One's knowledge base is, in many respects, a gross simplification,
+a two-dimensional knowledge graph masquerading as a first-order logic
+database. While it can store arbitrary predicates on arbitrary
+constants, the only reasoning is written directly into the python code,
+with no generalized proof or resolution mechanic.
+
+\subsubsection{The Rover One decision maker}
+
+First, the Rover One decision maker queries the knowledge maker for a
+path to any of its current goals (a symbolic endeavor, since it has no
+mechanism for extracting goals from its percepts.) If no path to a goal
+exists, it queries the knowledge base for an exploration goal, which is
+then added to an exploration-goals path. Finally, if no exploration goal
+is provided, the decision maker attempts any known direction keyword for
+which the exit predicate is unknown. (Exits are not always included in
+room descriptions, or a known direction keyword might be accepted as a
+synonym for a described exit that the parser did not recognize.)
+
+Once some sort of goal has been found, the Rover One will move in that
+direction. Most importantly, because exploration goals are reported by
+the knowledge base from all explored rooms, the agent is able to follow
+an unexplored path in one direction, and then follow the shortest path
+back to the next unexplored exit, following a sort of depth-first
+exploration.
+
+\subsubsection{Evaluating Rover One}
+
+To evaluate Rover One's effectiveness, I procedurally generated 4 simple
+mazes using TextWorld. These are increasingly large environments
+containing only interconnected rooms, with no obstacles. A goal room is
+chosen at random; if a player reaches that room, they are awarded one
+point and the game ends.
+
+Without too much confidence in Rover One's abilities, I matched it up
+against a random agent, TextWorld's Naive Agent, which randomly chooses
+from 15 pre-determined actions at every move.
+
+In addition to the 4 generated mazes, I included 7 publicly released
+text-based games ranging from a re-released version of the original
+\game{Adventure} to the 2007 \game{Lost
+Pig}\cite{crowther_adventure_1976, plotkin_hunter_1999, jota_lost_2007,
+    gentry_anchorhead_1998, nelson_curses_1993, blank_zork_1980,
+cadre_905_2000}. While these games are not solvable by an agent capable
+only of movement, they provide an opportunity to see how an agent
+performs with room layouts and scene descriptions from a naturally
+created game.
+
+\begin{figure}[h]
+    \centering
+\input{benchmarks}
+\caption{Comparison of agents on games 1,000 move limit}
+\end{figure}
+
+Each agent was given 10 playthroughs per game, stopping once the game
+was solved or once they had made 1000 moves. If a game ended early
+(from, say, being eaten by a terrible wumpus in \game{Hunter, in
+Darkness}), the agent was allowed to restart and play through with the
+moves remaining for that playthrough. The final score, number of moves
+made, and the number of unique locations visited, were averaged together
+over the 10 playthroughs and recorded.
+
+\begin{figure}[h]
+    \centering
+    \input{benchmarks_100}
+    \caption{Comparison of agents on games with 100 move limit}
+\end{figure}
+
+As can be seen, Rover One, with its intentional exploration,
+dramatically outperformed the random agent in maze-like environments. On
+the other hand, in more natural environments, Rover One generally
+under-performed the random agent on a metric of unique locations
+visited. As a point of comparison, I evaluated the two agents on shorter
+games, which showed the two agents coming slightly closer in
+performance. There are two likely reasons for this discrepancy ---
+firstly, given a relatively small state space (fewer than 30 reachable
+locations in the natural games), and enough movement, the stochastic
+agent is able to hit most locations through dumb luck, eliminating the
+advantage of Rover One's intentionality. Secondly, it is clear that
+Rover One is making errors in perception or inference that are keeping
+it from discovering locations that the random agent is able to stumble
+upon.
+
+One such shortcoming in Rover One's reasoning is the inability to
+distinguish two distinct objects with the same name. For instance, in
+\game{Zork I}, several areas bear names like \emph{Forest} or
+\emph{Clearing}. The agent, thinking these areas the same, will try an
+exit that worked in the past, find that exit impassible, and mark
+$exit(\text{DIR})$ as false \emph{for all rooms bearing the same name.}
+Because the agent will not waste its time on exits that it knows to be
+blocked, it will eventually convince itself that locations with a
+commonly occurring name have no possible exits. This suggests two areas
+of improvement for future Rovers. Clearly, the agent needs a more
+rigorous way of identifying objects, but, also, a successful agent
+might sometimes consider actions \emph{even if it knows them to be
+impossible}, and have the capacity to adjust when proving itself wrong.
+
+\subsection{Rover Two}
+
+\subsubsection{A formal logic-based knowledge base}
+
+\emph{Rover Two} was written as a follow-up to Rover One, with a
+logically complete reasoning system at the center of its knowledge base.
+Predicates are stored in in two-dimensional dictionaries indexed by
+predicates and tuples of arguments. As with Rover One, care is taken to
+distinguish between predicates which are known to be false and
+predicates which are simply unknown.
+
+Linear logic's linear implication operator allows us to change the next
+state of the truth model based on conditions in the current state. In
+practice, our knowledge base is encountering observations of this change
+after the player action, and its subsequent results, have occurred. To
+compare these \emph{prior} and \emph{posterior} states, predicates are
+stored in layered sparse models. With each move of the agent, the
+knowledge base is advanced, creating a new, empty dictionary of
+predicates.  Entailment of literals is checked by successively querying
+layered models, starting with the most recent, until a matching
+predicate is found. In this way, the most recent change to a predicate
+will be found by a query, but predicates which have not been updated
+since earlier states retain their truth value in the latest model.
+Queries to the knowledge base can indicate that a $t-n$ state is
+desired, which is used for recognizing changed conditions resulting from
+player actions. Because reasoning is primarily focused on the immediate
+prior and posterior time states, the oldest models are merged after a
+threshold is reached (5 during Rover Two's development.) Hopefully, this
+layered sparse model will eventually prove useful for constraint
+satisfaction searches.
+
+\begin{wrapfigure}{R}{.45\textwidth}
+    \begin{align*}
+        & \text{Stored sentences:}\\
+        & at(player, kitchen)[t-1] \\
+        & at(player, hallway) \\
+        & exit(kitchen, east) \\
+        & action(go, east)\\\medskip
+        & \text{Linear implication rule:} \\
+        & [t-1](at(player, L) \land \$ exit(L, DIR) \\
+        & \land \$ connects(L, DIR, DEST)) \\
+        & \multimap at(player, DEST) \\
+        & \text{Becomes:} \\
+        & [t-1](at(player, kitchen) \and \$ exit(kitchen, east) \\
+        & \land \$ connects(kitchen, east, hallway)) \\
+        & \multimap at(player, hallway)
+    \end{align*}
+    \caption{A linear implication containing free variables is unified
+        with sentences in the knowledge base, yielding a sentence which
+    is neither entailed by nor contradicted by the knowledge base.}
+\end{wrapfigure}
+
+Whereas Rover One's knowledge base only allowed limited querying of
+variable objects, Rover Two implements a complete \emph{unification}
+algorithm, allowing it to find substitutions that make sentences
+containing free variables equivalent to sentences contained in the
+knowledge base. (Or any other sentence provided.) In this way, a
+sentence containing free variables and many clauses can be
+\emph{fetched} from the knowledge base, returning the list of all
+substitutions such that the sentence is entailed. This allows us to find
+specific literals matching implication rules.
+
+After every successive tell to the knowledge base (containing a list of
+all observations made after single move), the knowledge base performs a
+\emph{forward chaining} algorithm. Known facts are matched against
+stored implications, and inferred facts are added. For the time being, a
+brute force forward chaining algorithm is used --- all known facts are
+checked against all known implications. A knowledge base equipped to
+handle large numbers of facts would improve this by limiting the checked
+implications to those which could be affected by the changed variables,
+avoiding a costly search of the entire knowledge base at every
+iteration.
+
+To draw conclusions from successful player actions, an unsound heuristic
+is used, which I have labeled the \emph{Occam's razor} algorithm. After
+an action is performed which has changed the game state, known linear
+implication rules are searched to find any rules which are not
+\emph{contradicted} by the prior state. The linear implication rule with
+the fewest unknown predicates, which \emph{could} have caused the state
+change, is selected, and the missing values are stored in the knowledge
+base. This heuristic is not sound --- just because certain conditions
+\emph{could} cause an observed outcome doesn't mean that those
+conditions \emph{did} cause it, or that those conditions must be true. A
+player that has gone north from a location believed to have a northern
+exit may have arrived at a new location because they traveled through
+that northern exit, or they may have fallen through a trap-door in the
+floor, revealing a previously unknown exit leading down. A more refined
+version of this algorithm would make more use of cues from the game text
+and parser to suggest whether an action had an expected or unexpected
+outcome. Guessed conditions could also be stored in a temporary model
+and subjected to forward chaining to look for potential contradictions
+before being added to the main model of the knowledge base.
+
+\subsubsection{Evaluating Rover Two}
+
+Rover Two is currently in an unfinished state. The knowledge base has
+been connected to the simple Rover One keyword parser (with necessary
+modifications), but the decision maker chooses actions at random,
+because the algorithms for finding paths to goals and directing
+exploration have not yet been written. As such, Rover One is capable of
+receiving observations and making inferences from them, but it is not
+capable of leveraging that knowledge in decision making.
+
+No formal evaluations of Rover Two's performance have been made, but I
+have informally observed the growth of the knowledge base as it receives
+observations from random actions inside of \game{Zork I}. The agent is
+able to accurately build a map of the environment, subject to the same
+object identification caveats as Rover One. Axioms of object equality,
+currently unwritten, should help resolve these problems.
+
+Linear implication rules describing new actions, with their conditions
+and consequences, are easily added. As long as the parser reports
+predicates to the knowledge base, it can easily deduce conditions that
+result in successful and unsuccessful actions.
+

@@ -1,1 +1,30 @@
 \section{Results}
+
+Because Rover Two never became fully operational, this experiment failed
+to yield the results that I hoped in measuring the utility of logical
+inference in text-based games. I do not, however, consider the
+experiment a failure, nor do I consider the logic-based agent a
+dead-end, even if it proved to be a time-consuming agent to implement.
+
+The success of Rover One on simple mazes is pleasing, though not
+surprising. Not all of the agents submitted to the Text-Based Adventure
+AI competition built maps of their environment or used goal-seeking
+exploration so, in this respect, Rover One outperforms some existing
+agents\cite{atkinson_text-based_2019}. On the other hand, its strict
+limitation to navigation makes it useless for most text-based
+environments. Its tendency to become stuck in rooms with common names
+is also a severe limitation, even within the narrow domain of
+navigation.
+
+Rover Two is currently unsuccessful as an AI agent, but, with its logic
+largely implemented, the ease of creating implication rules is
+encouraging. Coupled with existing techniques for extracting object
+information from room descriptions, Rover Two has promise at being able
+to solve puzzles in a text-based environment, given some common sense
+knowledge encoded as linear implication rules. While the current
+requires that these rules be added using Python objects, a parser was
+created using Tatsu for an interim version of Rover, which could be
+quickly updated to allow implication rules to be written in plain text
+(using an appropriate logical grammar) and imported into the Rover
+knowledge base at runtime.
+

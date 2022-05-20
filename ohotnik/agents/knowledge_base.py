@@ -80,7 +80,15 @@ class LogicBase:
         return None
 
     def explore(self):
-        return None, None
+        for rule in self.rules:
+            subs = self.fetch(rule.premise)
+            print(subs)
+            if not subs:
+                continue
+            best_sub = sorted(subs, lambda x: len(x))[0]
+            return map(lambda x: best_sub[x] if x in best_sub else x,
+                       rule.action)
+        return None
 
     def advance(self, action):
         """Advances the time state of the knowledge base and updates the
@@ -134,6 +142,32 @@ class LogicBase:
                 return result[0]['X']
         return None
 
+    def fetch_possible(self, sentence):
+        """Returns a list of substitutions for variables that does not
+        make a sentence false."""
+        if isinstance(sentence, Predicate):
+            return self.fetch(sentence)
+        if isinstance(sentence, AndClause):
+            substitutions = [{}]
+            for predicate in sentence:
+                new_subs = []
+                for sub in substitutions:
+                    new_sub = self.fetch(predicate.substitute(sub))
+                    if new_sub is False:
+                        continue
+                    if new_sub:
+                        for s in new_sub:
+                            s.update(sub)
+                            new_subs.append(s)
+                    else:
+                        new_subs.append(sub)
+                if not new_subs:
+                    return []
+                substitutions = new_subs
+            return substitutions
+        return []
+        # TO-DO: Test this fetch_possible algorithm
+
     def fetch(self, sentence):
         """Returns a list of substitutions for variables that makes
         sentence entailed by the knowledge base."""
@@ -144,10 +178,6 @@ class LogicBase:
             else:
                 models = self.models
 
-            # we need a way to make sure we are only taking the most
-            # current value of a predicate. maybe the simplest and most
-            # efficient way to do this is returning a match list along
-            # with a substitution list.
             matches = set()
             for model in reversed(models):
                 result = model.fetch(sentence, matches)

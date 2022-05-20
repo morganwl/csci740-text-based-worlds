@@ -1,12 +1,22 @@
-\documentclass{article}
+\documentclass[10pt]{article}
+\usepackage[margin=1.25in]{geometry}
+
+\makeatletter
+\def\input@path{%
+    {../components/}%
+}%
+\makeatother
 
 \usepackage{biblatex}
 \addbibresource{../text-based-worlds.bib}
 
+\usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{enumitem}
 \usepackage{pifont}
 \usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage{multirow}
 
 \usepackage{hyperref}
 

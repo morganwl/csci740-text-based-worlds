@@ -130,28 +130,11 @@ class RoverTwo:
     # Implementation
     def act_explore(self):
         """Return an action that helps to uncover new knowledge."""
-        dest, direction = self.kb.explore()
-        if dest:
-            self.exploration_goals.append((dest, direction))
-        if self.exploration_goals:
-            dest, direction = self.exploration_goals[-1]
-            if dest == self.location:
-                self.exploration_goals.pop()
-                self.current_goal = (dest, direction)
-                return ('go', direction)
-            path = self.kb.path(self.location, dest)
-            if path:
-                self.current_goal = path
-                return ('go', path[0])
-        # new_exploration = [(self.location, d) for d in DIRECTIONS
-        #     if self.kb.ask('go', self.location, d) is None]
-        # if new_exploration:
-        #     dest, direction = new_exploration.pop()
-        #     self.exploration_goals.extend(new_exploration)
-        #     self.current_goal = (dest, direction)
-        #     return f'go {direction}'
+        action = self.kb.explore()
+        if action:
+            self.current_goal = action
+            return action
         exits = [d for d in DIRECTIONS]
-
         shuffle(exits)
         if exits:
             direction = exits.pop()

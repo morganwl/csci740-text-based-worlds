@@ -2,7 +2,7 @@
 
 Text-based games, also called text adventures or interactive fiction,
 are a variety of computer games originally appearing in 1976 with the
-game \game{Colossal Cave}\cite{noauthor_adventure_2010}. The gameplay
+game \game{Adventure}\cite{crowther_adventure_1976}. The gameplay
 experience is meant to evoke reading a work of fiction, where the
 player controls a character, and through that character, the outcome of
 the story. Early text-based games tended to be a mixture of puzzles and
@@ -14,6 +14,37 @@ final goal. This challenge has recently made them an intriguing area of
 research in Artificial Intelligence, though a generalized agent capable
 of solving a wide range of text-based games remains
 elusive\cite{cote_textworld_2019}.
+
+\begin{wrapfigure}{R}{.45\textwidth}
+    \small
+    \raggedright
+    \texttt{
+        \noindent Alley\\
+        This narrow aperture between two buildings is nearly blocked
+        with piles of rotting cardboard boxes and overstuffed garbage
+        cans. Ugly, half- crumbling brick walls to either side totter
+        oppressively over you. The alley ends here at a tall, wooden
+        fence.\\
+        \medskip
+        High up on the wall of the northern building there is a narrow,
+        transom-style window.\\
+        \medskip
+        >examine window\\
+        It's about eighteen inches wide and a foot tall, with hinges
+        along the top that allow it to swing out. It's currently
+        closed.\\
+        \medskip
+        >open window\\
+        The window is too high.\\
+        \medskip
+        >move garbage can under window\\
+        Grunting and holding your breath, you manhandle one of the
+        filthy cans under the window.
+    }
+    \caption{Object interaction from
+    \game{Anchorhead}\cite{gentry_anchorhead_1998}.  Player commands are
+after the \texttt{>} prompt.}
+\end{wrapfigure}
 
 Players in text-based games control a \emph{player character} in an
 environment which is rendered to the player entirely through prose
@@ -27,27 +58,26 @@ typed at a prompt. The commands are interpreted by the game's parser,
 and the game responds, in natural language, based on the outcome of the
 player's action.
 
-While the prompt will accept any return-terminated string, the parser,
-based on the 1976 design, understands only a small subset of English
-vocabulary, with simple grammatical rules.\footnotemark Commands
-generally take the form of: \texttt{verb [noun phrase [adverb phrase]]},
-where \texttt{noun phrase} often denotes an object in the environment
-and \texttt{adverb phrase} often indicates a second object. Sample
-commands might be, ``\texttt{go north}'', ``\texttt{look under bed}''
-or ``\texttt{unlock wooden chest with bronze
-key}.''\cite{cote_textworld_2019} All recognized words have been
-explicitly coded, either by the authors of the parser, or by the authors
-of the individual game, but these words are not necessarily given to the
-player in an organized manner. Most games are written using one of a few
-widely available frameworks, which include a parser with a large
-vocabulary, but most games will make changes to that vocabulary or the
-parser itself. The parser will reject commands that it does not
+While the prompt will accept any return-terminated string, the parser
+understands only a small subset of English vocabulary, with simple
+grammatical rules.\footnotemark Commands generally take the form of:
+\texttt{verb [noun phrase [adverb phrase]]}, where \texttt{noun phrase}
+often denotes an object in the environment and \texttt{adverb phrase}
+often indicates a second object. Sample commands might be, ``\texttt{go
+north}'', ``\texttt{look under bed}'' or ``\texttt{unlock wooden chest
+with bronze key}.''\cite{cote_textworld_2019} All recognized words have
+been explicitly coded, either by the authors of the parser, or by the
+authors of the individual game, but these words are not necessarily
+given to the player in an organized manner. Most games are written using
+one of a few widely available frameworks, which include a parser with a
+large vocabulary, but most games will make changes to that vocabulary or
+the parser itself. The parser will reject commands that it does not
 understand, though individual games might communicate this rejection in
 different ways. The game will also often inform players of commands that
 are understood but have no effect, or are deemed irrelevant to a game.
 
 \footnotetext{Text-based games have been published in many natural
-languages, including Dutch, French, German, and Russian, but this paper
+    languages, including Dutch, French, German, and Russian, but this paper
 will focus exclusively on those available in English.} 
 
 As a problem for an artificial intelligence agent, text-based games
@@ -66,15 +96,21 @@ examining objects in the environment. Furthermore, each game has its own
 unique goal (or goals), which may or may not be clearly communicated to
 the player.
 
-[Why am I interested in this area of study?]
+The challenges of text-based games also make them an interesting
+environment for developing AI agents. An AI agent must be capable of
+extracting information from natural language processing, recognizing
+objects of interest, changes in the game environment, and other
+potential clues. The agent must be able to employ, or simulate, common
+sense reasoning, recognizing which actions might impact which actions,
+and combining those actions to reach goals.
 
 While generalized text-based games remain unsolved by AI agents, agents
 have achieved partial successes in those environments, and have been
 able to solve constrained games created as benchmarks. This project aims
 to create an AI agent capable of solving games that have been
 constrained in the goal and the kind of puzzles that must be solved to
-achieve it. Namely, the agent will be asked to solve mazes into four
-difficulty levels.
+achieve it. Namely, the agent will be asked to solve mazes broken into
+four difficulty levels.
 
 \begin{enumerate}
     \item Trivial mazes (interconnected rooms without obstacles)
