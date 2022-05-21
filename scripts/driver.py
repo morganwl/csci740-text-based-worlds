@@ -4,11 +4,10 @@
 
 import argparse
 import os
-from time import sleep
+from multiprocessing.connection import Client
 
 from textworld import start, EnvInfos
-from ohotnik.agents import RoverOne, RoverTwo
-from textworld.agents import NaiveAgent
+from ohotnik.agents import RoverTwo
 
 
 def get_root():
@@ -31,14 +30,26 @@ def parse_args():
     return vars(parser.parse_args())
 
 
-def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234, verbose=False):
+def send_debug(debug):
+    """Send state information to a visualization client if one is
+    available."""
+    address = ('localhost', 6000)
+    try:
+        conn = Client(address, authkey=b'textbased-agent')
+    except ConnectionRefusedError:
+        return
+    conn.send(debug)
+    conn.close()
+
+
+def main(game, agent, move_limit=100, quiet=False, seed=1234,
+         verbose=False):
     """Runs a single agent through a single game."""
     infos = EnvInfos(location=True, description=True)
     env = start(game, infos=infos)
     game_state = env.reset()
     agent = agent(seed=seed)
     reward, done = 0, False
-    sleep(pause)
     moves = 0
     locations = set()
     while not done:
@@ -48,23 +59,18 @@ def main(game, agent, move_limit=100, quiet=False, pause=.0, seed=1234, verbose=
         if not quiet:
             # print(game_state)
             if verbose:
-                for key, item in agent.debug_info().items():
-                    print('', key, ':', item)
+                send_debug(agent.debug_info())
             input()
             print('>', command)
         game_state, reward, done = env.step(command)
         if not quiet:
             print(env.render())
-        sleep(pause)
         if moves >= move_limit:
             done = True
     if 'score' in game_state:
         score = game_state['score']
     else:
         score = 0
-    # print('Locations visited:', len(locations))
-    # print(game_state)
-    # input()
     return moves, score, len(locations), game_state.get('won', False)
 
 
