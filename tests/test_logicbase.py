@@ -10,7 +10,7 @@ MAIN_DIR = os.path.join(TEST_DIR, os.pardir)
 sys.path.insert(0, MAIN_DIR)
 
 from ohotnik.agents import LogicBase, AndClause, Predicate, \
-    Implication, LinearImplication, FunctionNode
+    Implication, LinearImplication
 from ohotnik.agents.knowledge_base import unify
 
 
@@ -29,6 +29,17 @@ class TestUnify(unittest.TestCase):
         p1 = Predicate('at', ('player', 'dining room'))
         p2 = Predicate('at', ('player', 'living room'))
         self.assertFalse(unify(p1, p2))
+
+    def test_unify_constant(self):
+        """Confirms that a constant substitution can be supplied to
+        unify explicitly."""
+        # import pdb
+        # pdb.set_trace()
+        self.assertTrue(unify(
+            Predicate('exit', ('kitchen', 'north')),
+            Predicate('exit', ('kitchen-1', 'north')),
+            {'kitchen-1': 'kitchen'}
+        ))
 
 
 class TestLogicBase(unittest.TestCase):
@@ -83,20 +94,25 @@ class TestLogicBase(unittest.TestCase):
     def test_variable_and_clause(self):
         """Confirm that an AND clause with a variable evaluates
         correctly."""
+
+        # tell a fact to kb
         self.kb.tell([
             Predicate('at', ['player', 'living room']),
         ])
+        # advance time
         self.kb.advance(('go', 'south',))
+        # tell two new facts, one of which overrides prior fact
         self.kb.tell([
             Predicate('at', ['player', 'dining room']),
             Predicate('at', ['player', 'living room'], False),
         ])
-        now_predicate = Predicate('at', ['player', 'LOCATION'])
+
+        # confirm that the location from last term is not the location
+        # for this term
+        now_predicate = Predicate('at', ['player', 'LOCATION'],
+                                  time=-1)
         then_predicate = Predicate(
-            'at', ['player', FunctionNode('location',
-                                          ['player'],
-                                          time=-1)],
-            False)
+            'at', ['player', 'LOCATION'], False)
         self.assertTrue(now_predicate.eval(self.kb))
         self.assertTrue(then_predicate.eval(self.kb))
         premise = AndClause([now_predicate, then_predicate])
@@ -122,7 +138,7 @@ class TestLogicBase(unittest.TestCase):
         self.assertEqual(premise.eval(self.kb),
                          [{'L': 'garage', 'C': 'box'},
                           {'L': 'bedroom', 'C': 'chest'}])
-    
+
     def test_forward_chain(self):
         self.kb.add_implication(
             Implication(
@@ -135,10 +151,9 @@ class TestLogicBase(unittest.TestCase):
         self.kb.advance(('go', 'south',))
         self.kb.tell([
             Predicate('connects', ['living room', 'south',
-                                   'dining room']),])
+                                   'dining room'])])
         self.assertTrue(
-            Predicate('exit', ['living room',
-                                   'south',]))
+            Predicate('exit', ['living room', 'south']))
 
     def test_linear_implication(self):
         """Confirms that linear implication evaluates correctly."""
@@ -157,11 +172,10 @@ class TestLogicBase(unittest.TestCase):
         rule = LinearImplication(
             ('go', 'DIRECTION',),
             AndClause([
-                Predicate('exit', [FunctionNode('location',
-                                                ['player']),
-                                   'DIRECTION'], carry=True),
-                Predicate('connects', [FunctionNode('location',
-                                                    ['player']),
+                Predicate('at', ['player', 'LOCATION']),
+                Predicate('exit', ['LOCATION', 'DIRECTION'],
+                          carry=True),
+                Predicate('connects', ['LOCATION',
                                        'DIRECTION',
                                        'DESTINATION'],
                           carry=True)]),

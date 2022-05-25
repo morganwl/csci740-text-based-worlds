@@ -51,6 +51,7 @@ class TestRoverOne(unittest.TestCase):
         """Parse should accept a game_state and return a list of
         observations."""
         agent = self.agent
+        agent.last_command = 'look'
         game_state = {"feedback":
                       ("Simple Room\n"
                        "This is a blank room with bare, scratched wood "

@@ -1,16 +1,16 @@
 """RoverTwo, a simple agent that looks for directions in location
 descriptions, and attempts to follow them."""
 
+from random import shuffle
+
+from . import LogicBase, Predicate, AndClause, Implication, \
+    LinearImplication
+
 DIRECTIONS = ['north', 'south', 'east', 'west', 'up', 'down',
               'northwest', 'northeast', 'southwest', 'southeast']
 REJECTIONS = ["I don't know the word"]
 MODES = [EXPLORATION, EXPLOITATION] = [1, 2]
 DEBUG = True
-
-from random import shuffle
-
-from . import LogicBase, Predicate, AndClause, Implication, \
-    LinearImplication
 
 RULES = [
     LinearImplication(
@@ -23,6 +23,12 @@ RULES = [
                       ('LOCATION', 'DIRECTION', 'DESTINATION'),
                       carry=True)]),
         Predicate('at', ('player', 'DESTINATION')))]
+
+IMPLICATIONS = [
+    Implication(
+        Predicate('at', ('player', 'LOCATION'), time=-1),
+        Predicate('visited', ('location'), True)),
+]
 
 
 def tokenize(s):

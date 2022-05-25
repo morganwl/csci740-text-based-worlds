@@ -4,8 +4,7 @@ learned from a game world."""
 
 from collections import namedtuple, defaultdict
 
-from . import Predicate, FunctionNode, Implication, \
-    AndClause, LogicPart
+from . import Predicate, AndClause, LogicPart
 
 Function = namedtuple('Function', ['predicate', 'argument'])
 
@@ -16,16 +15,20 @@ def isvar(identifier):
 
 
 def unify(x, y, substitution=None):
-    """Russell and Norvig substitution algorithm"""
+    """Return a substitution for free variables that makes sentences x
+    and y equal."""
+    # pylint: disable=too-many-return-statements
+    # this function design is not the clearest, but I'm using it more or
+    # less as written in the Russell + Norvig textbook
     if substitution is None:
         substitution = {}
     if substitution is False:
         return False
     if x == y:
         return substitution
-    if isvar(x):
+    if isvar(x) or x in substitution:
         return unify_var(x, y, substitution)
-    if isvar(y):
+    if isvar(y) or y in substitution:
         return unify_var(y, x, substitution)
     if isinstance(x, LogicPart) and isinstance(y, LogicPart):
         return unify(x.args, y.args,
@@ -39,6 +42,8 @@ def unify(x, y, substitution=None):
 
 
 def unify_var(var, x, substitution: dict):
+    """Have to tease out the semantics of this function taken from
+    Russell and Norvig."""
     if var in substitution:
         return unify(substitution[var], x, substitution)
     if x in substitution:
@@ -50,6 +55,8 @@ def unify_var(var, x, substitution: dict):
 
 
 def occur_check(var, x):
+    # pylint: disable=unused-argument
+    """Does nothing."""
     return False
 
 
@@ -106,14 +113,11 @@ class LogicBase:
 
     def store(self, literal, time=0):
         """Stores a literal in the knowledge base."""
-        args = []
-        for i, arg in enumerate(literal.args):
-            if isinstance(arg, FunctionNode):
-                arg = arg.eval(self)
-            args.append(arg)
+        self.constants.union(set(literal.args))
+        for arg in literal.args:
             self.constants.add(arg)
         time -= 1
-        self.models[time].store(literal.name, tuple(args),
+        self.models[time].store(literal.name, literal.args,
                                 literal.value)
 
     def ask_literal(self, predicate, args, value, time=None):
@@ -142,11 +146,11 @@ class LogicBase:
                 return result[0]['X']
         return None
 
-    def fetch_possible(self, sentence):
+    def fetch_possible(self, sentence, substitution=None):
         """Returns a list of substitutions for variables that does not
         make a sentence false."""
         if isinstance(sentence, Predicate):
-            return self.fetch(sentence)
+            return self.fetch(sentence, substitution)
         if isinstance(sentence, AndClause):
             substitutions = [{}]
             for predicate in sentence:
@@ -168,7 +172,7 @@ class LogicBase:
         return []
         # TO-DO: Test this fetch_possible algorithm
 
-    def fetch(self, sentence):
+    def fetch(self, sentence, substitution=None):
         """Returns a list of substitutions for variables that makes
         sentence entailed by the knowledge base."""
         substitutions = []
@@ -180,9 +184,8 @@ class LogicBase:
 
             matches = set()
             for model in reversed(models):
-                result = model.fetch(sentence, matches)
-                if result is False:
-                    return False
+                result = model.fetch(sentence, matches,
+                                     initial_substitution=substitution)
                 subs, ms = result
                 substitutions.extend(subs)
                 matches.update(ms)
@@ -199,11 +202,14 @@ class LogicBase:
         self.rules.append(rule)
 
     def add_implication(self, implication):
+        """Adds an implication to the knowledge base."""
         self.implications.append(implication)
 
     def forward_chain(self, goal=None):
         """If a rule is entailed by the knowledge base, adds any
         additional knowledge to the knowledge base and repeats."""
+        # pylint: disable=unused-argument
+        # goal argument for planned feature
         change = False
         for imp in self.implications:
             subs = imp.premise.eval(self)
@@ -234,8 +240,8 @@ class LogicBase:
             simplest_count = 2**7
             simplest_rule = None
             for rule in self.rules:
-                sub = unify(AndClause([self.action, predicate]),
-                            AndClause([rule.action, rule.consequent]))
+                sub = unify(AndClause((self.action, predicate)),
+                            AndClause((rule.action, rule.consequent)))
                 count = 0
                 predicates = []
                 if sub and predicate.value == rule.consequent.value:
@@ -258,7 +264,7 @@ class LogicBase:
                             if r is None:
                                 count += 1
                                 predicates.append(new_clause)
-                    if count >= 0 and count < simplest_count:
+                    if 0 <= count < simplest_count:
                         simplest_count = count
                         simplest_rule = (rule, sub, predicates)
             if simplest_rule:
@@ -271,14 +277,17 @@ class LogicBase:
 
     def fetch_rules(self, goal):
         """Returns all rules that could satisfy a goal."""
-        return [rule for rule in self.rules if unify(rule.consequent, goal)]
-                
+        return [rule for rule in self.rules
+                if unify(rule.consequent, goal)]
+
     @property
     def action(self):
+        """Returns the most recent action."""
         return self.models[-1].action
 
     @property
     def predicates(self):
+        """Returns all predicates in the knowledge base."""
         temp_model = Model()
         for model in self.models:
             temp_model.merge(model)
@@ -307,25 +316,34 @@ class Model:
         """Stores the value of a predicate."""
         self.predicates[predicate][args] = value
 
-    def fetch(self, sentence, matches=None):
+    def fetch(self, sentence, matches=None, initial_substitution=None):
+        """Returns all substitutions which makes a sentence valid,
+        skipping any predicates in matches and, optionally, starting
+        with an initial substitution."""
         substitutions = []
         if matches is None:
             matches = set()
         if isinstance(sentence, Predicate):
             for literal, v in self.predicates[sentence.name].items():
-                if literal in matches or v != sentence.value:
+                if literal in matches:
                     continue
                 substitution = unify(sentence,
                                      Predicate(sentence.name,
-                                               literal))
+                                               literal),
+                                     initial_substitution)
                 if substitution is not False:
-                    substitutions.append(substitution)
                     matches.add(literal)
+                    if v == sentence.value:
+                        substitutions.append(substitution)
             return substitutions, matches
+        return None
 
     def merge(self, other):
+        """Merge the values of another model into this one."""
+        self.action = other.action
         for predicate in other.predicates:
-            self.predicates[predicate].update(other.predicates[predicate])
+            self.predicates[predicate].update(
+                other.predicates[predicate])
 
     def __iter__(self):
         for predicate, values in self.predicates.items():
