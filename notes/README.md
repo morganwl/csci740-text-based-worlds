@@ -2,6 +2,45 @@
 
 ## Changes, Notes, To-Do
 
+### Wednesday, May 25
+
+- Going to try and take a pause from coding to focus on building my own
+  base of knowledge.
+- Leaving off in a place where the knowledge base has the ability to
+  reason around arbitrary predicates, is bounded by the available action
+  rules (only rules for movement encoded) and the parser's ability to
+  make observations.
+- Significantly, the Knowledge Base still lacks the ability to reason
+  about equality. I would like to be able to give objects unique names
+  (not necessarily their observed name) and reason about equality or
+  inequality between those objects.
+  - What assumptions are necessary to reason about equality? Do we
+    assume that all similarly named objects are equal until proven
+    distinct? Can we ever *prove* that objects are equal, based on
+    neighbors that have only conditional equality?
+  - We'll need to reason about the observed names of objects to narrow
+    the scope of objects which _could_ be equal. Should this be done by
+    attaching properties (not logical predicates) to constants and
+    creating special predicates that call a hard-coded function to
+    compare those properties? This would allow us to implement fuzzy
+    string match and other heuristic forms of equality.
+  - I think a promising idea is to prove equality or inequality by
+    contradiction when first establishing the constants for a given set
+    of observations. If assuming equality yields a contradiction, assert
+    inequality, and visa versa. (I'm pretty sure that this will still
+    require some axiomatic identity to ground itself. Otherwise we can
+    keep spinning off new objects indefinitely so that no observations
+    ever conflict with any others.)
+  - There are lots of special cases we can conceive that would
+    invalidate some of our axioms. For now, I think we have to ignore
+    those cases in the interest of covering the common cases
+    effectively, and then find ways to generalize. Obviously, this is
+    one of the weaknesses of a logical approach over a probabilistic
+    approach --- a probabilistic approach makes no pretense at
+    assertions, only confident guesses.
+- For now, I am just exploring, but there will come a time when I need
+  to identify some _benefits_ to the logical approach.
+
 ### Tuesday, May 10
 
 - Finally got Tatsu parser working

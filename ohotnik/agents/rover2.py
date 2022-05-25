@@ -28,6 +28,19 @@ IMPLICATIONS = [
     Implication(
         Predicate('at', ('player', 'LOCATION'), time=-1),
         Predicate('visited', ('location'), True)),
+    Implication(
+        AndClause((
+            Predicate('connects', ('LOCATION', 'DIRECTION', 'X')),
+            Predicate('connects', ('LOCATION', 'DIRECTION', 'Y')),
+        )),
+        Predicate('=', ('X', 'Y'))),
+    Implication(
+        AndClause((
+            Predicate('connects', ('L', 'DIRECTION', 'X')),
+            Predicate('connects', ('M', 'DIRECTION', 'Y')),
+            Predicate('=', ('X', 'Y'), False)),
+        ),
+        Predicate('=', ('L', 'M'), False)),
 ]
 
 
